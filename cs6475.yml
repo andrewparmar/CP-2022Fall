@@ -1,0 +1,11 @@
+name: CS6475
+dependencies:
+  - python=3.8.13
+  - matplotlib=3.5.1
+  - numpy=1.21.6
+  - scipy=1.8.0
+  - pandas=1.4.2
+  - conda-forge::nb_conda
+  - pip
+  - pip:
+      - opencv-contrib-python==4.5.5.64
