@@ -30,7 +30,7 @@ Review the [Course Policies, Section 3F: Official Course Communication](https://
 
 **Canvas** - If you have not already, please check that you have access to CS-6475-001 on Canvas. If you just enrolled in the course, it might take some time for you to see the course in Canvas, so give it a couple days. If you still do not see the course after waiting, message the Instructors on Ed.
 
-**Ed** - If this is your first time using Ed as a GT student, go to [https://edstem.org/us/login](https://edstem.org/us/login) and enter your **GT email address**. You will be redirected to GT's central Single Sign-On, where you should enter your GT username (e.g. gburdell3) and password. Once you are logged in, you will see a Dashboard with your courses that you have access to. There is an autosync between Canvas and Ed, so once you're officially added to our Canvas roster, you will be added to the course Ed roster as well. Once you have access to the course Canvas, you can also access Ed by selecting 'Ed Discussion' in our Canvas sidebar. 
+**Ed** - If this is your first time using Ed as a GT student, go to [https://edstem.org/us/login](https://edstem.org/us/login) and enter your **GT email address**. You will be redirected to GT's central Single Sign-On, where you should enter your GT username (e.g. gburdell3) and password. Once you are logged in, you will see a Dashboard with your courses that you have access to. Once you are officially added to our Canvas roster, you will be added to the course Ed roster as well. We will do a daily Ed roster check during Week 1 to make sure the Ed and Canvas rosters are synced. Once you have access to the course Canvas, you can also access Ed by selecting 'Ed Discussion' in our Canvas sidebar. 
 
 Once you have access to Ed, go ahead and introduce yourself!
 
@@ -48,7 +48,7 @@ Updates can be retrieved by running `git pull` in the root directory of the repo
 
 ## 4. Set up the Virtual Environment Using Anaconda
 
-**We require all students use the same python3 (3.8.xx) class environment.** This course uses large third-party libraries (NumPy, SciPy, OpenCV, etc.) for assignments and projects. Severe errors may result if your environment uses the latest versions of python or the required libraries, up to causing your code to crash and earn a zero.
+**We require all students use the same python3 (3.8.xx) class environment.** This course uses large third-party libraries (NumPy, SciPy, OpenCV, etc.) for assignments and projects. Severe errors may result if your environment uses different versions of python or the required libraries than the versions we specified in the `cs6475.yml` file, up to causing your code to crash and earn a zero.
  
 The standardized class environment, CS6475, allows for proper execution of your code across your local environment, the remote autograder, Instructors' machines that must run your code,  and makes sure that the assignment code we provide works as expected. Follow the directions to setup an Anaconda virtual environment that includes the correct version of all required software and libraries.
 
@@ -77,7 +77,7 @@ conda activate CS6475
 (CS6475) C://your current path
 ```
 
-**NOTE 1: Do NOT let your IDE update file/library versions in the CS6475 class env.**  This will undo all the work you just did to setup the env, and your will need to follow the next note before you recreate the env. 
+**NOTE 1: Do NOT let your IDE update file/library versions in the CS6475 class environment.**  This will undo all the work you just did to setup the environment, and your will need to follow the next note before you recreate the env. 
 
 **NOTE 2: If your initial CS6475 environment gets messed up and you need to recreate it,** make sure that you remove the environment first by running `conda env remove --name CS6475`. 
 
@@ -109,7 +109,8 @@ OK
 
 ## 5. Log in to Gradescope 
 
-Log in to [Gradescope](https://www.gradescope.com/) using your GT username and password and you should be able to see the course listed in your dashboard. This might take a 3-4 days to take effect if you just enrolled into the course, so be patient.
+Log in to [Gradescope](https://www.gradescope.com/) using your GT username and password and you should be able to see the course listed in your dashboard. This might take a 3-4 days to take effect if you just enrolled into the course, so be patient. Once you have access to the course Canvas, you can also access Gradescope by selecting 'Gradescope' in our Canvas sidebar. 
+
 
 We will be using Gradescope to process assignment/project submissions in this course. Each assignment/project will normally require submission of a report (pdf) and resources (code files and images). The report will be submitted separately from the resources, each under its corresponding assignment on Gradescope. When you submit code to the Gradescope autograder, you should be able to see the output of the autograder within a few minutes. Each assignment/project will have submission instructions, so make sure you pay really close attention to them.
 
@@ -142,9 +143,9 @@ For more information on how to use specific LaTeX commands, please refer to Over
 
 ## 8. Take the Plagiarism Quiz on the Course Policies and Georgia Tech's Honor Code
 
-We take Academic Integrity very seriously and it is very important that our students understand the [Course Policies](https://omscs6475.cc.gatech.edu/course-syllabus/) (see Section III of the Course Syllabus) and [Georgia Tech's Honor Code](https://osi.gatech.edu/content/honor-code). Once you review the information, take the Plagiarism Quiz on Canvas. This graded quiz has 15-20 multiple choice questions aimed to help students understand our policies in depth. The scenarios have all occurred in this class over time. You are allowed unlimited attempts, open sources, and only your final score will count towards your participation grade. See the Course Schedule for the quiz's due date.
+We take Academic Integrity very seriously and it is very important that our students understand the [Course Policies](https://omscs6475.cc.gatech.edu/course-syllabus/) (see Section III of the Course Syllabus) and [Georgia Tech's Academic Honor Code](https://policylibrary.gatech.edu/student-life/academic-honor-code). Once you review the information, take the Plagiarism Quiz on Canvas. This graded quiz has 15-20 multiple choice questions aimed to help students understand our CS 6475 policies in depth. The scenarios have all occurred in this class over time. You are allowed unlimited attempts, open sources, and only your final score will count towards your participation grade. See the Course Schedule for the quiz's due date.
 
-**This quiz is graded and already available on Canvas. You can access this quiz by going to Canvas → Quizzes → Assignment Quizzes, with unlimited attempts before its due date.**
+**You can access this quiz by going to Canvas → Quizzes → Assignment Quizzes.**
 
 ## 9. Take the Permission Quiz on sharing exemplary work
 
@@ -156,19 +157,19 @@ To make things easier and faster, we need you to complete a “Yes/No” quiz th
 
 After the semester is over, we will not share your work in future semesters.  
  
-## 9. Cameras, Tripods, and EXIF Data
+## 10. Cameras, Tripods, and EXIF Data
 
 You are allowed to use any kind of camera  -- anything from smartphones to high-end DSLR cameras -- for this class. Most students have successfully completed assignments using only a smartphone, so do not feel that you need to go and buy a fancy camera (although many students have used this class as an excuse to buy the camera of their dreams).
 
 ### Required Manual Controls
-Many assignments have specific setting requirements for **exposure time, aperture, and ISO.** Information is available online on camera settings, and we expect you to find it for your device. You will need to be able to manually control exposure time and ISO for several assignments. Note that aperture is fixed on almost all smartphones, therefore its already "manually controlled" for those devices. There are apps that can help smartphones, but since apps constantly change, we cannot make recommendations for them. Feel free to share names of apps with your classmates on Ed. 
+Many assignments have specific setting requirements for **exposure time, aperture, and ISO.** Information is available online on camera settings, and we expect you to find it for your device. You will need to be able to manually control exposure time and ISO for several assignments. Note that aperture is fixed on almost all smartphones, therefore it is already "manually controlled" for those devices. There are apps that can help smartphones, but since apps constantly change, we cannot make recommendations for them. Feel free to share names of apps with your classmates on Ed. 
 
   - Exposure time in seconds (ex: 1/2000 s, 1/30 s)
   - Aperture (ex: f 2.8, f16) 
   - ISO (ex: ISO 100, ISO 1600)
 
 ### EXIF Metadata
-To help you get used to your camera and its settings, you will be asked to provide some technical information about your photograph on A0. You should immediately find out how to get the EXIF data for the camera you plan to use in this course. Google it!
+To help you get used to your camera and its settings, you will be asked to provide some technical information about your photograph on Assignment 0. You should immediately find out how to get the EXIF data for the camera you plan to use in this course. Google it!
 
 EXIF data is recorded as a part of digital images, and can be found on your phone, in your digital camera, or on your computer. **Image editing can erase the data, so record the settings before playing with your image.** Make a copy of your original image before completing actions such as resizing and filtering, so that you do not lose this info. Search online for information on finding EXIF data for your device if you are not sure how to find it or do not know what it is. You can also discuss EXIF data, and how to keep it, on Ed.
 
@@ -184,11 +185,11 @@ It is harder to improvise for larger cameras and DSLRs. There are bargain tripod
 
 This notebook introduces some key aspects of the NumPy and OpenCV APIs as they relate to image manipulation. These techniques are building blocks that can be used extensively throughout the course. Although there are no deliverables for these notebook exercises, there is a **graded Canvas quiz** (see course schedule for due date). You are free to discuss the notebooks on the forums, but make sure that you refrain from giving away quiz questions and answers. **We cannot recommend enough that you start on this first notebook immediately because it can be a great reference for the assignments/projects in this course. If you are unfamiliar with python, reviewing Notebook 1 alongside Assignment 0 may be very helpful.**
 
-The Instructors will make an announcement on Ed once Notebook 1 and its corresponding quiz is released.
+**The Instructors will make an announcement on Ed once Notebook 1 and its corresponding quiz is released on Day 1 of class. The quiz will be due a week later (see course schedule for exact due date).**
 
 
 ## 12. Complete Assignment 0
 
 This is a short introductory assignment to help you become familiar with the course submission process. You will be required to write some python code, create a report using a LaTeX template, and submit both your report and resources to Gradescope. It is very important to get Assignment 0 completed immediately before starting on Assignment 1.
 
-**The Instructors will make an announcement on Ed at the beginning of the course when Assignment 0 is released.  It will be due about a week later.**
+**The Instructors will make an announcement on Ed once Assignment 0 is released on Day 1 of class. It will be due about a week later (see course schedule for exact due date).**
