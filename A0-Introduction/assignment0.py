@@ -3,9 +3,6 @@
 # These are the only libraries you may use. No additional imports are allowed.
 import cv2
 import numpy as np
-#TODO remove
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 
 """ Assignment 0 - Introduction
@@ -249,11 +246,16 @@ def convolutionCV2(image, filter):
         a convolved numpy array with the same dimensions as the input image and
         type np.uint8.
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    img = image.copy()
+
+    # using: 2k + 1 = filter_height, and solving for k
+    filter_flipped = cv2.flip(filter, flipCode=-1)
+    # filter_h = filter.shape[0]
+    # padding = int((filter_h - 1) / 2)
+
+    result = cv2.filter2D(img, ddepth=-1, kernel=filter_flipped, borderType=cv2.BORDER_REFLECT)
+
+    return result
 
 
 # ----------------------------------------------------------
@@ -268,19 +270,26 @@ if __name__ == "__main__":
     prints (like a line for each pixel), may cause the autograder to crash, 
     which will cost you a try!
     """
-    print(returnYourName())
-
-    # read in your image, change image format to match. Uncomment useful lines.
-    # image = cv2.imread("yourimage.jpg")
-    image = cv2.imread("images/source/desk_art.png")
-    # image = cv2.imread("toy_image.png")
-    print(imageDimensions(image))
-    print(imageSize(image))
-
-    # Create a small random toy image for testing, and save it.
-    # image = np.random.randint(0, 255, (5, 4, 3), dtype=(np.uint8))
-    # cv2.imwrite("image.png", image)
-
-    img = convolutionManual(image, myFilter())
-
-    cv2.imwrite('images/output/desk_art_filtered.png', img)
+    # print(returnYourName())
+    #
+    # # read in your image, change image format to match. Uncomment useful lines.
+    # # image = cv2.imread("yourimage.jpg")
+    # image = cv2.imread("images/source/desk_art.png")
+    # # image = cv2.imread("toy_image.png")
+    # print(imageDimensions(image))
+    # print(imageSize(image))
+    #
+    # # Create a small random toy image for testing, and save it.
+    # # image = np.random.randint(0, 255, (5, 4, 3), dtype=(np.uint8))
+    # # cv2.imwrite("image.png", image)
+    # my_filter = myFilter()
+    # print('sum of filter elements =', np.sum(my_filter))
+    #
+    # img_manual = convolutionManual(image, my_filter)
+    # cv2.imwrite('images/output/convolveManual.png', img_manual)
+    #
+    # img_cv2 = convolutionCV2(image, my_filter)
+    # cv2.imwrite('images/output/convolveCV2.png', img_cv2)
+    #
+    # # TODO DON'T FORGET TO COMMENT OUT MAIN CODE!
+    pass
