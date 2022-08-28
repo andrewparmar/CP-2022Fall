@@ -119,7 +119,7 @@ def myFilter():
         *  1 for most filters  
         *  0 for edge filters
     """
-    return np.ones((3, 3)) * 1/9
+    return np.ones((3, 3), dtype=np.float64) * 1/9
 
 def convolutionManual(image, filter):
     """ This function takes your input color (BGR) image and any square, symmetrical
@@ -170,7 +170,7 @@ def convolutionManual(image, filter):
     image : numpy.ndarray
         A 3-channel color (BGR) image, 300kB or less, represented as a numpy array of 
         dimensions (H, W, channels) and type np.uint8
-    filter : numpy.ndarray
+    filter_rot : numpy.ndarray
         A 2D numpy array of variable dimensions, with type np.float.
         The filter (also called kernel) will be square and symmetrical,
         with odd values. Your code should be able to handle
@@ -181,31 +181,35 @@ def convolutionManual(image, filter):
         a convolved numpy array with the same dimensions (H, W, ch) as the input image
         with type np.uint8.
     """
+    # copy and cast image
     img = image.copy()
+    img_64 = image.astype(np.float64)
 
+    # cast filter and transform
+    filter_rot = np.rot90(filter.astype(np.float64), 2)
+    filter_h = filter_rot.shape[0]
     # using: 2k + 1 = filter_height, and solving for k
-    filter = np.rot90(filter, 2)
-    filter_h = filter.shape[0]
     padding = int((filter_h - 1) / 2)
 
-    img = np.moveaxis(img, 2, 0)
-    img_mirror = np.asarray([np.pad(img[i], padding, mode='symmetric') for i in range(3)])
-    img_mirror = np.moveaxis(img_mirror, 0, 2)
-    img = np.moveaxis(img, 0, 2)
+    # Pad image
+    npad = ((padding, padding), (padding, padding), (0, 0))
+    img_mirror = np.pad(img_64, npad, mode='symmetric')
 
-    result = np.zeros_like(img)
-    for row in range(padding, padding+img.shape[0]):
-        for col in range(padding, padding+img.shape[1]):
-            for ch in range(img.shape[2]):
+    result = np.zeros_like(img, dtype=np.float64)
+    h, w, channels = img.shape
+    for row in range(padding, padding+h):
+        for col in range(padding, padding+w):
+            for ch in range(channels):
                 row_start = row-padding
                 row_end = row+padding+1
                 col_start = col-padding
                 col_end = col+padding+1
 
-                tmp = img_mirror[row_start:row_end, col_start:col_end, ch] * filter
+                tmp = img_mirror[row_start:row_end, col_start:col_end, ch] * filter_rot
                 result[row-padding][col-padding][ch] = tmp.sum()
 
-    return result
+    result = np.rint(result.astype(np.float64))
+    return result.astype(np.uint8)
 
 
 def convolutionCV2(image, filter):
@@ -247,15 +251,16 @@ def convolutionCV2(image, filter):
         type np.uint8.
     """
     img = image.copy()
+    img_64 = img.astype(np.float64)
 
     # using: 2k + 1 = filter_height, and solving for k
-    filter_flipped = cv2.flip(filter, flipCode=-1)
+    filter_flipped = cv2.flip(filter.astype(np.float64), flipCode=-1)
     # filter_h = filter.shape[0]
     # padding = int((filter_h - 1) / 2)
 
-    result = cv2.filter2D(img, ddepth=-1, kernel=filter_flipped, borderType=cv2.BORDER_REFLECT)
-
-    return result
+    result = cv2.filter2D(img_64, ddepth=-1, kernel=filter_flipped, borderType=cv2.BORDER_REFLECT)
+    result = np.rint(result.astype(np.float64))
+    return result.astype(np.uint8)
 
 
 # ----------------------------------------------------------
@@ -273,8 +278,7 @@ if __name__ == "__main__":
     # print(returnYourName())
     #
     # # read in your image, change image format to match. Uncomment useful lines.
-    # # image = cv2.imread("yourimage.jpg")
-    # image = cv2.imread("images/source/desk_art.png")
+    # image = cv2.imread("images/source/image.png")
     # # image = cv2.imread("toy_image.png")
     # print(imageDimensions(image))
     # print(imageSize(image))
@@ -290,6 +294,6 @@ if __name__ == "__main__":
     #
     # img_cv2 = convolutionCV2(image, my_filter)
     # cv2.imwrite('images/output/convolveCV2.png', img_cv2)
-    #
-    # # TODO DON'T FORGET TO COMMENT OUT MAIN CODE!
+
+    # TODO DON'T FORGET TO COMMENT OUT MAIN CODE!
     pass
