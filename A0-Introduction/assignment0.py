@@ -187,6 +187,7 @@ def convolutionManual(image, filter):
     img = image.copy()
 
     # using: 2k + 1 = filter_height, and solving for k
+    filter = np.rot90(filter, 2)
     filter_h = filter.shape[0]
     padding = int((filter_h - 1) / 2)
 
@@ -195,17 +196,7 @@ def convolutionManual(image, filter):
     img_mirror = np.moveaxis(img_mirror, 0, 2)
     img = np.moveaxis(img, 0, 2)
 
-    print("test")
-    # TODO change this to no use CV2!!
-    # img_mirror = cv2.copyMakeBorder(
-    #     img, padding, padding, padding, padding, borderType=cv2.BORDER_REFLECT
-    # )
-    print("test")
-    # plt.imshow(np.moveaxis(img_mirror, 0, 2))
-    # cv2.imshow("test", np.moveaxis(img_mirror, 0, 2))
-    # cv2.waitKey()
     result = np.zeros_like(img)
-    print('********')
     for row in range(padding, padding+img.shape[0]):
         for col in range(padding, padding+img.shape[1]):
             for ch in range(img.shape[2]):
