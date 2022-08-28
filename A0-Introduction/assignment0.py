@@ -3,6 +3,9 @@
 # These are the only libraries you may use. No additional imports are allowed.
 import cv2
 import numpy as np
+#TODO remove
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 
 """ Assignment 0 - Introduction
@@ -61,11 +64,7 @@ def returnYourName():
     output : a string formatted as your official name as shown on your
         Gradescope Account
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return "Andrew Samuel Parmar"
 
 
 def imageDimensions(image):
@@ -84,11 +83,7 @@ def imageDimensions(image):
         the tuple returns the shape of the image ordered as
         (rows, columns, channels)
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return image.shape
     
 def imageSize(image):
     """ This function takes your input image and returns its array size,
@@ -105,11 +100,7 @@ def imageSize(image):
     ----------
     integer:  integer value of the total number of elements in your image
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return image.size
     
 def myFilter():
     """ This function returns the 2D (H, W) filter that you are using in 
@@ -131,11 +122,7 @@ def myFilter():
         *  1 for most filters  
         *  0 for edge filters
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return np.ones((3, 3)) * 1/9
 
 def convolutionManual(image, filter):
     """ This function takes your input color (BGR) image and any square, symmetrical
@@ -197,11 +184,40 @@ def convolutionManual(image, filter):
         a convolved numpy array with the same dimensions (H, W, ch) as the input image
         with type np.uint8.
     """
-    # WRITE YOUR CODE HERE.
+    img = image.copy()
 
-    
-    # End of code
-    raise NotImplementedError
+    # using: 2k + 1 = filter_height, and solving for k
+    filter_h = filter.shape[0]
+    padding = int((filter_h - 1) / 2)
+
+    img = np.moveaxis(img, 2, 0)
+    img_mirror = np.asarray([np.pad(img[i], padding, mode='symmetric') for i in range(3)])
+    img_mirror = np.moveaxis(img_mirror, 0, 2)
+    img = np.moveaxis(img, 0, 2)
+
+    print("test")
+    # TODO change this to no use CV2!!
+    # img_mirror = cv2.copyMakeBorder(
+    #     img, padding, padding, padding, padding, borderType=cv2.BORDER_REFLECT
+    # )
+    print("test")
+    # plt.imshow(np.moveaxis(img_mirror, 0, 2))
+    # cv2.imshow("test", np.moveaxis(img_mirror, 0, 2))
+    # cv2.waitKey()
+    result = np.zeros_like(img)
+    print('********')
+    for row in range(padding, padding+img.shape[0]):
+        for col in range(padding, padding+img.shape[1]):
+            for ch in range(img.shape[2]):
+                row_start = row-padding
+                row_end = row+padding+1
+                col_start = col-padding
+                col_end = col+padding+1
+
+                tmp = img_mirror[row_start:row_end, col_start:col_end, ch] * filter
+                result[row-padding][col-padding][ch] = tmp.sum()
+
+    return result
 
 
 def convolutionCV2(image, filter):
@@ -261,15 +277,19 @@ if __name__ == "__main__":
     prints (like a line for each pixel), may cause the autograder to crash, 
     which will cost you a try!
     """
-    # WRITE YOUR CODE HERE 
-        
+    print(returnYourName())
+
     # read in your image, change image format to match. Uncomment useful lines.
     # image = cv2.imread("yourimage.jpg")
+    image = cv2.imread("images/source/desk_art.png")
+    # image = cv2.imread("toy_image.png")
+    print(imageDimensions(image))
+    print(imageSize(image))
 
     # Create a small random toy image for testing, and save it.
     # image = np.random.randint(0, 255, (5, 4, 3), dtype=(np.uint8))
     # cv2.imwrite("image.png", image)
 
-    
-    # DON'T FORGET TO COMMENT OUT MAIN CODE!
-    pass
+    img = convolutionManual(image, myFilter())
+
+    cv2.imwrite('images/output/desk_art_filtered.png', img)
