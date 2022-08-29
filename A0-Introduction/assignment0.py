@@ -119,7 +119,8 @@ def myFilter():
         *  1 for most filters  
         *  0 for edge filters
     """
-    return np.ones((3, 3), dtype=np.float64) * 1/9
+    n = 7
+    return np.ones((n, n), dtype=np.float64) * 1/(n**2)
 
 def convolutionManual(image, filter):
     """ This function takes your input color (BGR) image and any square, symmetrical
@@ -295,5 +296,6 @@ if __name__ == "__main__":
     # img_cv2 = convolutionCV2(image, my_filter)
     # cv2.imwrite('images/output/convolveCV2.png', img_cv2)
 
-    # TODO DON'T FORGET TO COMMENT OUT MAIN CODE!
+    # assert np.all(img_manual[:,:,:] == img_cv2[:,:,:])
+
     pass
