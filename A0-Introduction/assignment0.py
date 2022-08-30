@@ -276,26 +276,26 @@ if __name__ == "__main__":
     prints (like a line for each pixel), may cause the autograder to crash, 
     which will cost you a try!
     """
-    # print(returnYourName())
-    #
-    # # read in your image, change image format to match. Uncomment useful lines.
-    # image = cv2.imread("images/source/image.png")
-    # # image = cv2.imread("toy_image.png")
-    # print(imageDimensions(image))
-    # print(imageSize(image))
-    #
-    # # Create a small random toy image for testing, and save it.
-    # # image = np.random.randint(0, 255, (5, 4, 3), dtype=(np.uint8))
-    # # cv2.imwrite("image.png", image)
-    # my_filter = myFilter()
-    # print('sum of filter elements =', np.sum(my_filter))
-    #
-    # img_manual = convolutionManual(image, my_filter)
-    # cv2.imwrite('images/output/convolveManual.png', img_manual)
-    #
-    # img_cv2 = convolutionCV2(image, my_filter)
-    # cv2.imwrite('images/output/convolveCV2.png', img_cv2)
+    print(returnYourName())
 
-    # assert np.all(img_manual[:,:,:] == img_cv2[:,:,:])
+    # read in your image, change image format to match. Uncomment useful lines.
+    image = cv2.imread("images/source/image.png")
+    # image = cv2.imread("toy_image.png")
+    print(imageDimensions(image))
+    print(imageSize(image))
+
+    # Create a small random toy image for testing, and save it.
+    # image = np.random.randint(0, 255, (5, 4, 3), dtype=(np.uint8))
+    # cv2.imwrite("image.png", image)
+    my_filter = myFilter()
+    print('sum of filter elements =', np.sum(my_filter))
+
+    img_manual = convolutionManual(image, my_filter)
+    cv2.imwrite('images/output/convolveManual.png', img_manual)
+
+    img_cv2 = convolutionCV2(image, my_filter)
+    cv2.imwrite('images/output/convolveCV2.png', img_cv2)
+
+    assert np.all(img_manual[:,:,:] == img_cv2[:,:,:])
 
     pass
