@@ -43,6 +43,10 @@ import scipy as sp
 import scipy.signal  # one option for a 2D convolution library
 import cv2
 
+# TODO remove
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 
 def returnYourName():
     """ When it is called, this function should return your official name as
@@ -54,11 +58,7 @@ def returnYourName():
     -------
     output : string formatted as follows: your official name in Gradescope
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return "Andrew Samuel Parmar"
 
 
 def generatingKernel(a):
@@ -110,9 +110,12 @@ def reduce_layer(image, kernel=generatingKernel(0.4)):
         An image of shape (ceil(r/2), ceil(c/2)). For instance, if the input is
         5x7, the output will be 3x4.
     """
+    filtered_img = cv2.filter2D(image, ddepth=-1, kernel=kernel, borderType=cv2.BORDER_REFLECT101)
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    scale_factor = 0.5
+    half_sized_img = cv2.resize(filtered_img, (0, 0), fx=scale_factor, fy=scale_factor)
+
+    return half_sized_img
 
 
 def expand_layer(image, kernel=generatingKernel(0.4)):
@@ -173,9 +176,22 @@ def gaussPyramid(image, levels):
         (output[0]) is layer 0 of the pyramid (the image itself). output[1] is
         layer 1 of the pyramid (image reduced once), etc.
     """
+    res = [image]
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    for _ in range(levels):
+        img = res[-1]
+        # perform reduction
+        res.append(reduce_layer(img))
+
+    # TODO remove this
+    # for img_ in res:
+    #     plt.imshow(img_, cmap='gray')
+    #     plt.show()
+    #     print("test")
+
+    assert len(res) == levels + 1
+
+    return res
 
 
 def laplPyramid(gaussPyr):
