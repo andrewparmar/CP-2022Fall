@@ -336,6 +336,12 @@ def collapse(pyramid):
         size 6x8. If the next layer is of size 5x7, crop the expanded image
         to size 5x7.
     """
+    curr = pyramid[-1]
+    for i in range(len(pyramid)-2, -1, -1):
+        res = pyramid[i] + expand_layer(curr)[:pyramid[i].shape[0], :pyramid[i].shape[1]]
+        curr = res
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    # plt.imshow(res, cmap='gray')
+    # plt.show()
+
+    return res
