@@ -111,11 +111,9 @@ def reduce_layer(image, kernel=generatingKernel(0.4)):
         5x7, the output will be 3x4.
     """
     filtered_img = cv2.filter2D(image, ddepth=-1, kernel=kernel, borderType=cv2.BORDER_REFLECT101)
-
-    scale_factor = 0.5
-    half_sized_img = cv2.resize(filtered_img, (0, 0), fx=scale_factor, fy=scale_factor)
-
-    return half_sized_img
+    reduced_image = filtered_img[::2, ::2]
+    # print(f"{filtered_img.shape=}, {reduced_image.shape=}")
+    return reduced_image
 
 
 def expand_layer(image, kernel=generatingKernel(0.4)):
@@ -149,9 +147,12 @@ def expand_layer(image, kernel=generatingKernel(0.4)):
         An image of shape (2*r, 2*c). For instance, if the input is 3x4, then
         the output will be 6x8.
     """
+    h, w = image.shape
+    upsampled_image = np.zeros((h * 2, w * 2))
+    upsampled_image[::2, ::2] = image
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    expanded_image = 4 * cv2.filter2D(upsampled_image, ddepth=-1, kernel=kernel, borderType=cv2.BORDER_REFLECT101)
+    return expanded_image
 
 
 def gaussPyramid(image, levels):
@@ -228,10 +229,24 @@ def laplPyramid(gaussPyr):
         result in an image of size 6x8. In this case, crop the expanded layer
         to 5x7.
     """
+    res = []
+    i = 0
+    while i < len(gaussPyr)-1:
+        curr = gaussPyr[i]
+        expanded = expand_layer(gaussPyr[i+1])
+        # print(f"{curr.shape=}, {gaussPyr[i+1].shape=}, {expanded.shape=}")
+        diff_img = curr - expanded[:curr.shape[0], :curr.shape[1]]
+        res.append(diff_img)
+        i += 1
+    res.append(gaussPyr[i])
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
-
+    # TODO remove this
+    # for img_ in res:
+    #     plt.imshow(img_, cmap='gray')
+    #     plt.show()
+    #     print("test")
+    assert len(res) == len(gaussPyr)
+    return res
 
 def blend(laplPyrWhite, laplPyrBlack, gaussPyrMask):
     """Blend two laplacian pyramids by weighting them with a gaussian mask.
