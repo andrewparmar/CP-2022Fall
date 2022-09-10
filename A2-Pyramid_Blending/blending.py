@@ -288,9 +288,22 @@ def blend(laplPyrWhite, laplPyrBlack, gaussPyrMask):
         Furthermore, each layer is guaranteed to have the same shape as
         previous levels.
     """
+    res = []
+    for i, M in enumerate(gaussPyrMask):
+        L = laplPyrBlack[i]
+        R = laplPyrWhite[i]
 
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+        X = (1-M) * L + M * R
+
+        res.append(X)
+
+    # TODO remove this
+    # for img_ in res:
+    #     plt.imshow(img_, cmap='gray')
+    #     plt.show()
+    #     print("test")
+
+    return res
 
 
 def collapse(pyramid):
