@@ -44,8 +44,8 @@ import scipy.signal  # one option for a 2D convolution library
 import cv2
 
 # TODO remove
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+# import matplotlib as mpl
+# import matplotlib.pyplot as plt
 
 
 def returnYourName():
@@ -110,6 +110,7 @@ def reduce_layer(image, kernel=generatingKernel(0.4)):
         An image of shape (ceil(r/2), ceil(c/2)). For instance, if the input is
         5x7, the output will be 3x4.
     """
+    image = image.astype(np.float64)
     filtered_img = cv2.filter2D(image, ddepth=-1, kernel=kernel, borderType=cv2.BORDER_REFLECT101)
     reduced_image = filtered_img[::2, ::2]
     # print(f"{filtered_img.shape=}, {reduced_image.shape=}")
@@ -147,6 +148,7 @@ def expand_layer(image, kernel=generatingKernel(0.4)):
         An image of shape (2*r, 2*c). For instance, if the input is 3x4, then
         the output will be 6x8.
     """
+    image = image.astype(np.float64)
     h, w = image.shape
     upsampled_image = np.zeros((h * 2, w * 2))
     upsampled_image[::2, ::2] = image
@@ -177,6 +179,7 @@ def gaussPyramid(image, levels):
         (output[0]) is layer 0 of the pyramid (the image itself). output[1] is
         layer 1 of the pyramid (image reduced once), etc.
     """
+    image = image.astype(np.float64)
     res = [image]
 
     for _ in range(levels):
@@ -341,6 +344,7 @@ def collapse(pyramid):
         res = pyramid[i] + expand_layer(curr)[:pyramid[i].shape[0], :pyramid[i].shape[1]]
         curr = res
 
+    # TODO
     # plt.imshow(res, cmap='gray')
     # plt.show()
 
