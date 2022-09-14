@@ -43,7 +43,7 @@ When you are ready to submit your code, you can submit it to the Gradescope auto
   * <= 30 but >20 submissions -> -5 penalty
   * <= 40 but >40 submissions -> -10 penalty
   * more than 40 submissions  -> -20 penalty
-  
+
 
 ### 2. Generate your own panorama
 
