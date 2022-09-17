@@ -30,7 +30,6 @@ import cv2
 import scipy.ndimage as nd
 
 # TODO remove
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
@@ -60,8 +59,8 @@ def getImageCorners(image):
         this in mind and make SURE you get it right.
     """
     height, width, _ = image.shape
-    corners = np.float32([[0, 0], [0, height - 1], [width - 1, height - 1], [width - 1, 0]]).reshape(4, 1, 2)
-    return corners
+    corners = np.float32([[0, 0], [0, height], [width, 0], [width, height]]).reshape(4, 1, 2)
+    return corners.astype(np.float32)
 
 
 def findMatchesBetweenImages(image_1, image_2, num_matches):
@@ -151,10 +150,11 @@ def findHomography(image_1_kp, image_2_kp, matches):
     image_1_points = np.float32([image_1_kp[m.queryIdx].pt for m in matches])
     image_2_points = np.float32([image_2_kp[m.trainIdx].pt for m in matches])
 
-    M, mask = cv2.findHomography(image_1_points, image_2_points, cv2.RANSAC, 5.0)
+    M, mask = cv2.findHomography(image_1_points, image_2_points, method=cv2.RANSAC, ransacReprojThreshold=5.0)
 
     #TODO return only the M (Homography)
-    return M, mask
+    # return M.astype(np.float64), mask
+    return M.astype(np.float64)
 
 
 def getBoundingCorners(corners_1, corners_2, homography):
@@ -212,11 +212,12 @@ def getBoundingCorners(corners_1, corners_2, homography):
     """
     warped_corners_1 = cv2.perspectiveTransform(corners_1, homography)
 
-    x_min = min(warped_corners_1[:, :, 0].min(), 0)
-    y_min = min(warped_corners_1[:, :, 1].min(), 0)
+    x_min = min(warped_corners_1[:, :, 0].min(), corners_2[:, :, 0].min())
+    y_min = min(warped_corners_1[:, :, 1].min(), corners_2[:, :, 1].min())
     x_max = max(warped_corners_1[:, :, 0].max(), corners_2[:, :, 0].max())
     y_max = max(warped_corners_1[:, :, 1].max(), corners_2[:, :, 1].max())
 
+    # TODO: Maybe don't return negative values?
     return np.array([x_min, y_min], dtype=np.float64), np.array([x_max, y_max], dtype=np.float64)
 
 
@@ -285,15 +286,15 @@ def warpCanvas(image, homography, min_xy, max_xy):
     # which requires a tuple of ints to specify size, or else it may throw
     # a warning/error, or fail silently
     canvas_size = tuple(np.round(max_xy - min_xy).astype(np.int))
-    translation_h = np.array([[1, 0, -min_xy[0]], [0, 1, -min_xy[1]], [0, 0, 1]], dtype=np.float32)
-    full_homography = np.dot(translation_h, homography)
+
+    translation_matrix = np.array([[1, 0, -min_xy[0]], [0, 1, -min_xy[1]], [0, 0, 1]], dtype=np.float64)
+    full_homography = np.dot(translation_matrix, homography)
     img_pano = cv2.warpPerspective(image, full_homography, canvas_size)
 
-    # img3 = cv2.cvtColor(img_pano, cv2.COLOR_BGR2RGB)
-    plt.imshow(img_pano)
-    plt.show()
+    # TODO clenaup: Remove
+    # plt.imshow(img_pano)
+    # plt.show()
 
-    print('test')
     return img_pano
 
 
@@ -323,9 +324,17 @@ def createImageMask(image):
     '''
     h,w,d  = np.atleast_3d(image).shape
     mask = np.zeros((h,w),dtype=np.bool)
-    # TODO: WRITE YOUR CODE HERE
-    raise NotImplementedError
-    
+
+    # ret, thresh = cv2.threshold(image, 1, 255, 0)
+    # contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(image[:, :, 0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contour_img = cv2.drawContours(image, contours, -1, (255,255,255), -1)
+
+    # TODO clenaup: Remove
+    plt.imshow(contour_img)
+    plt.show()
+
+    return contour_img
 
 def createRegionMasks(left_mask,right_mask):
     '''
@@ -472,14 +481,15 @@ def blendImagePair(image_1, image_2, num_matches):
 
     """
     kp1, kp2, matches = findMatchesBetweenImages(image_1, image_2, num_matches)
-    homography, mask = findHomography(kp1, kp2, matches)
-    matchesMask = mask.ravel().tolist()
-    draw_params = dict(matchColor=(255, 0, 0),  # draw matches in green color
-                       singlePointColor=None,
-                       matchesMask=matchesMask,  # draw only inliers
-                       flags=2)
+    # homography, mask = findHomography(kp1, kp2, matches)
+    homography = findHomography(kp1, kp2, matches)
 
     ## TODO Remove: Uncomment for debugging
+    # matchesMask = mask.ravel().tolist()
+    # draw_params = dict(matchColor=(255, 0, 0),  # draw matches in green color
+    #                    singlePointColor=None,
+    #                    matchesMask=matchesMask,  # draw only inliers
+    #                    flags=2)
     # img3 = cv2.drawMatches(
     #     image_1, kp1, image_2, kp2, matches[:10], None, **draw_params
     #     # matchColor=(255, 0, 0)
@@ -497,6 +507,11 @@ def blendImagePair(image_1, image_2, num_matches):
     min_xy = min_xy.astype(np.int)
     right_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
                  -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
+    left_mask = createImageMask(left_image)
+    right_mask = createImageMask(right_image)
+
+    # plt.imshow(right_image)
+    # plt.show()
 
     # TODO: WRITE YOUR CODE HERE.
     return output_image
