@@ -150,6 +150,7 @@ def findHomography(image_1_kp, image_2_kp, matches):
     image_1_points = np.float32([image_1_kp[m.queryIdx].pt for m in matches])
     image_2_points = np.float32([image_2_kp[m.trainIdx].pt for m in matches])
 
+    # print("*"*20, image_1_points.shape, image_2_points.shape)
     M, mask = cv2.findHomography(image_1_points, image_2_points, method=cv2.RANSAC, ransacReprojThreshold=5.0)
 
     #TODO return only the M (Homography)
@@ -292,8 +293,7 @@ def warpCanvas(image, homography, min_xy, max_xy):
     img_pano = cv2.warpPerspective(image, full_homography, canvas_size)
 
     # TODO clenaup: Remove
-    # plt.imshow(img_pano)
-    # plt.show()
+    # plt.imshow(img_pano); plt.show()
 
     return img_pano
 
@@ -322,21 +322,21 @@ def createImageMask(image):
     read the documentation for cv2.findContours and cv2.drawContours. If you
     choose to use cv2.findContours, use mode=cv2.RETR_EXTERNAL,method = cv2.CHAIN_APPROX_SIMPLE.
     '''
-    h,w,d  = np.atleast_3d(image).shape
-    mask = np.zeros((h,w),dtype=np.bool)
+    if len(image.shape) == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # ret, thresh = cv2.threshold(image, 1, 255, 0)
     # contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours, hierarchy = cv2.findContours(image[:, :, 0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_img = cv2.drawContours(image, contours, -1, (255,255,255), -1)
 
-    # TODO clenaup: Remove
-    plt.imshow(contour_img)
-    plt.show()
+    # TODO cleanup: Remove
+    # plt.imshow(contour_img, cmap='gray'); plt.show()
 
     return contour_img
 
-def createRegionMasks(left_mask,right_mask):
+
+def createRegionMasks(left_mask, right_mask):
     '''
     This method will take two masks, one created from the warped image and one 
     created from the second, translated image.  It will generate three masks:
@@ -377,8 +377,16 @@ def createRegionMasks(left_mask,right_mask):
     -----
     Read the documentation on numpy's np.bitwise_* methods.
     '''
-    # TODO: WRITE YOUR CODE HERE
-    raise NotImplementedError
+
+    overlap_mask = np.bitwise_and(left_mask, right_mask)
+    left_only = np.bitwise_xor(left_mask, overlap_mask)
+    right_only = np.bitwise_xor(right_mask, overlap_mask)
+
+    # plt.imshow(overlap_mask); plt.show()
+    # plt.imshow(left_only); plt.show()
+    # plt.imshow(right_only); plt.show()
+
+    return (left_only.astype(np.bool), overlap_mask.astype(np.bool), right_only.astype(np.bool))
 
 
 def findDistanceToMask(mask):
@@ -495,8 +503,7 @@ def blendImagePair(image_1, image_2, num_matches):
     #     # matchColor=(255, 0, 0)
     # )
     # img3 = cv2.cvtColor(img3, cv2.COLOR_BGR2RGB)
-    # plt.imshow(img3)
-    # plt.show()
+    # plt.imshow(img3); plt.show()
 
     corners_1 = getImageCorners(image_1)
     corners_2 = getImageCorners(image_2)
@@ -506,13 +513,15 @@ def blendImagePair(image_1, image_2, num_matches):
     right_image = np.zeros_like(left_image)
     min_xy = min_xy.astype(np.int)
     right_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
-                 -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
+                -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
     left_mask = createImageMask(left_image)
     right_mask = createImageMask(right_image)
+    l_mask, overlay_mask, right_mask = createRegionMasks(left_mask, right_mask)
+    left_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
+               -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
 
-    # plt.imshow(right_image)
-    # plt.show()
+    # plt.imshow(left_image); plt.show()
 
-    # TODO: WRITE YOUR CODE HERE.
-    return output_image
+    return left_image
+    # return output_image
     # END OF FUNCTION
