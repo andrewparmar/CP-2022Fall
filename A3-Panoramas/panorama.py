@@ -411,8 +411,9 @@ def findDistanceToMask(mask):
     -----
     Refer to Notebook 1 on how to use the scipy.ndimage.distance_transform_edt method.
     '''
-    # TODO: WRITE YOUR CODE HERE
-    raise NotImplementedError
+    distance_mask = nd.morphology.distance_transform_edt(~mask)
+    # plt.imshow(distance_mask); plt.show()
+    return distance_mask
 
 
 def generateAlphaWeights(left_distance, right_distance):
@@ -443,8 +444,16 @@ def generateAlphaWeights(left_distance, right_distance):
         the **right** distance mask to the sum of the right and 
         left distance masks.
     '''
-    # TODO: WRITE YOUR CODE HERE
-    raise NotImplementedError
+
+    # alpha = np.zeros_like(left_distance)
+    # alpha[left_distance < right_distance] = left_distance[left_distance < right_distance]
+    # alpha[left_distance >= right_distance] = right_distance[left_distance >= right_distance]
+    # alpha / (left_distance + right_distance)
+    # alpha_ratios = alpha / (left_distance + right_distance)
+
+    alpha_ratios = left_distance / (left_distance + right_distance)
+
+    return alpha_ratios
 
 
 def blendImagePair(image_1, image_2, num_matches):
@@ -510,6 +519,8 @@ def blendImagePair(image_1, image_2, num_matches):
     corners_2 = getImageCorners(image_2)
     min_xy, max_xy = getBoundingCorners(corners_1, corners_2, homography)
     left_image = warpCanvas(image_1, homography, min_xy, max_xy)
+    # plt.imshow(left_image); plt.show()
+
     output_image = np.zeros_like(left_image)
     right_image = np.zeros_like(left_image)
     min_xy = min_xy.astype(np.int)
@@ -528,8 +539,10 @@ def blendImagePair(image_1, image_2, num_matches):
 
     left_distance = findDistanceToMask(l_mask)
     right_distance = findDistanceToMask(r_mask)
+    # left_distance[~overlay_mask] = 0
+    # right_distance[~overlay_mask] = 0
 
-    # generateAlphaWeights(left_distance, right_distance)
+    generateAlphaWeights(left_distance, right_distance)
 
     return left_image
     # return output_image
