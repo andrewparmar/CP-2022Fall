@@ -30,7 +30,7 @@ import cv2
 import scipy.ndimage as nd
 
 # TODO remove
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def getImageCorners(image):
@@ -322,18 +322,19 @@ def createImageMask(image):
     read the documentation for cv2.findContours and cv2.drawContours. If you
     choose to use cv2.findContours, use mode=cv2.RETR_EXTERNAL,method = cv2.CHAIN_APPROX_SIMPLE.
     '''
-    if len(image.shape) == 3:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img = image.copy()
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # ret, thresh = cv2.threshold(image, 1, 255, 0)
     # contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contour_img = cv2.drawContours(image, contours, -1, (255,255,255), -1)
+    contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contour_img = cv2.drawContours(img, contours, -1, (255,255,255), -1)
 
     # TODO cleanup: Remove
     # plt.imshow(contour_img, cmap='gray'); plt.show()
 
-    return contour_img
+    return contour_img.astype(np.bool)
 
 
 def createRegionMasks(left_mask, right_mask):
@@ -414,7 +415,7 @@ def findDistanceToMask(mask):
     raise NotImplementedError
 
 
-def generateAlphaWeights(left_distance,right_distance):
+def generateAlphaWeights(left_distance, right_distance):
     '''
     This method takes two distance maps and generates a set of 
     alpha weights to be used to create a smooth gradient used
@@ -516,11 +517,19 @@ def blendImagePair(image_1, image_2, num_matches):
                 -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
     left_mask = createImageMask(left_image)
     right_mask = createImageMask(right_image)
-    l_mask, overlay_mask, right_mask = createRegionMasks(left_mask, right_mask)
+
+    # plt.imshow(left_mask); plt.show()
+    # plt.imshow(right_mask); plt.show()
+    l_mask, overlay_mask, r_mask = createRegionMasks(left_mask, right_mask)
     left_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
                -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
 
     # plt.imshow(left_image); plt.show()
+
+    left_distance = findDistanceToMask(l_mask)
+    right_distance = findDistanceToMask(r_mask)
+
+    # generateAlphaWeights(left_distance, right_distance)
 
     return left_image
     # return output_image
