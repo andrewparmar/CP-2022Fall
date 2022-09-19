@@ -30,7 +30,7 @@ import cv2
 import scipy.ndimage as nd
 
 # TODO remove
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 def getImageCorners(image):
@@ -453,6 +453,7 @@ def generateAlphaWeights(left_distance, right_distance):
 
     alpha_ratios = left_distance / (left_distance + right_distance)
 
+    alpha_ratios[right_distance == 0] = right_distance[right_distance == 0]
     return alpha_ratios
 
 
@@ -519,7 +520,7 @@ def blendImagePair(image_1, image_2, num_matches):
     corners_2 = getImageCorners(image_2)
     min_xy, max_xy = getBoundingCorners(corners_1, corners_2, homography)
     left_image = warpCanvas(image_1, homography, min_xy, max_xy)
-    # plt.imshow(left_image); plt.show()
+    plt.imshow(left_image); plt.show()
 
     output_image = np.zeros_like(left_image)
     right_image = np.zeros_like(left_image)
@@ -532,8 +533,8 @@ def blendImagePair(image_1, image_2, num_matches):
     # plt.imshow(left_mask); plt.show()
     # plt.imshow(right_mask); plt.show()
     l_mask, overlay_mask, r_mask = createRegionMasks(left_mask, right_mask)
-    left_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
-               -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
+    # left_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
+    #            -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
 
     # plt.imshow(left_image); plt.show()
 
@@ -542,7 +543,17 @@ def blendImagePair(image_1, image_2, num_matches):
     # left_distance[~overlay_mask] = 0
     # right_distance[~overlay_mask] = 0
 
-    generateAlphaWeights(left_distance, right_distance)
+    alpha_weights = generateAlphaWeights(left_distance, right_distance)
+
+    output_image[l_mask] = left_image[l_mask]
+    output_image[r_mask] = right_image[r_mask]
+
+    plt.imshow(output_image); plt.show()
+
+    for i in range(3):
+        output_image[:,:,i][overlay_mask] = (1-alpha_weights[overlay_mask]) * left_image[:,:,i][overlay_mask] + alpha_weights[overlay_mask] * right_image[:, :, i][overlay_mask]
+
+    plt.imshow(output_image); plt.show()
 
     return left_image
     # return output_image
