@@ -30,7 +30,7 @@ import cv2
 import scipy.ndimage as nd
 
 # TODO remove
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def getImageCorners(image):
@@ -147,14 +147,12 @@ def findHomography(image_1_kp, image_2_kp, matches):
     numpy.ndarray(dtype=np.float64)
         A 3x3 array defining a homography transform between image_1 and image_2
     """
-    image_1_points = np.float32([image_1_kp[m.queryIdx].pt for m in matches])
-    image_2_points = np.float32([image_2_kp[m.trainIdx].pt for m in matches])
+    image_1_points = np.float64([image_1_kp[m.queryIdx].pt for m in matches])
+    image_2_points = np.float64([image_2_kp[m.trainIdx].pt for m in matches])
 
     # print("*"*20, image_1_points.shape, image_2_points.shape)
-    M, mask = cv2.findHomography(image_1_points, image_2_points, method=cv2.RANSAC, ransacReprojThreshold=5.0)
+    M, _ = cv2.findHomography(image_1_points, image_2_points, method=cv2.RANSAC, ransacReprojThreshold=5.0)
 
-    #TODO return only the M (Homography)
-    # return M.astype(np.float64), mask
     return M.astype(np.float64)
 
 
@@ -451,10 +449,7 @@ def generateAlphaWeights(left_distance, right_distance):
     # alpha / (left_distance + right_distance)
     # alpha_ratios = alpha / (left_distance + right_distance)
 
-    alpha_ratios = left_distance / (left_distance + right_distance)
-
-    alpha_ratios[right_distance == 0] = right_distance[right_distance == 0]
-    return alpha_ratios
+    return right_distance / (left_distance + right_distance)
 
 
 def blendImagePair(image_1, image_2, num_matches):
@@ -520,7 +515,7 @@ def blendImagePair(image_1, image_2, num_matches):
     corners_2 = getImageCorners(image_2)
     min_xy, max_xy = getBoundingCorners(corners_1, corners_2, homography)
     left_image = warpCanvas(image_1, homography, min_xy, max_xy)
-    plt.imshow(left_image); plt.show()
+    # plt.imshow(left_image); plt.show()
 
     output_image = np.zeros_like(left_image)
     right_image = np.zeros_like(left_image)
@@ -548,13 +543,12 @@ def blendImagePair(image_1, image_2, num_matches):
     output_image[l_mask] = left_image[l_mask]
     output_image[r_mask] = right_image[r_mask]
 
-    plt.imshow(output_image); plt.show()
+    # plt.imshow(output_image); plt.show()
 
     for i in range(3):
-        output_image[:,:,i][overlay_mask] = (1-alpha_weights[overlay_mask]) * left_image[:,:,i][overlay_mask] + alpha_weights[overlay_mask] * right_image[:, :, i][overlay_mask]
+        output_image[:,:,i][overlay_mask] = alpha_weights[overlay_mask] * left_image[:,:,i][overlay_mask] + (1-alpha_weights[overlay_mask]) * right_image[:, :, i][overlay_mask]
 
-    plt.imshow(output_image); plt.show()
+    # plt.imshow(output_image); plt.show()
 
-    return left_image
-    # return output_image
+    return output_image
     # END OF FUNCTION
