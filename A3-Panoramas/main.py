@@ -17,7 +17,7 @@ from os import path
 
 import panorama as pano
 
-NUM_MATCHES = 10
+NUM_MATCHES = 200
 SRC_FOLDER = "images/source"
 OUT_FOLDER = "images/output"
 IMG_EXTS = set(["png", "jpeg", "jpg", "gif", "tiff", "tif", "raw", "bmp"])

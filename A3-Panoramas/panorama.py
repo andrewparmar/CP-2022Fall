@@ -59,7 +59,7 @@ def getImageCorners(image):
         this in mind and make SURE you get it right.
     """
     height, width, _ = image.shape
-    corners = np.float32([[0, 0], [0, height], [width, 0], [width, height]]).reshape(4, 1, 2)
+    corners = np.array([[0, 0], [0, height], [width, 0], [width, height]]).reshape(4, 1, 2)
     return corners.astype(np.float32)
 
 
@@ -147,8 +147,8 @@ def findHomography(image_1_kp, image_2_kp, matches):
     numpy.ndarray(dtype=np.float64)
         A 3x3 array defining a homography transform between image_1 and image_2
     """
-    image_1_points = np.float64([image_1_kp[m.queryIdx].pt for m in matches])
-    image_2_points = np.float64([image_2_kp[m.trainIdx].pt for m in matches])
+    image_1_points = np.array([image_1_kp[m.queryIdx].pt for m in matches])
+    image_2_points = np.array([image_2_kp[m.trainIdx].pt for m in matches])
 
     # print("*"*20, image_1_points.shape, image_2_points.shape)
     M, _ = cv2.findHomography(image_1_points, image_2_points, method=cv2.RANSAC, ransacReprojThreshold=5.0)
@@ -216,7 +216,6 @@ def getBoundingCorners(corners_1, corners_2, homography):
     x_max = max(warped_corners_1[:, :, 0].max(), corners_2[:, :, 0].max())
     y_max = max(warped_corners_1[:, :, 1].max(), corners_2[:, :, 1].max())
 
-    # TODO: Maybe don't return negative values?
     return np.array([x_min, y_min], dtype=np.float64), np.array([x_max, y_max], dtype=np.float64)
 
 
@@ -289,9 +288,6 @@ def warpCanvas(image, homography, min_xy, max_xy):
     translation_matrix = np.array([[1, 0, -min_xy[0]], [0, 1, -min_xy[1]], [0, 0, 1]], dtype=np.float64)
     full_homography = np.dot(translation_matrix, homography)
     img_pano = cv2.warpPerspective(image, full_homography, canvas_size)
-
-    # TODO clenaup: Remove
-    # plt.imshow(img_pano); plt.show()
 
     return img_pano
 
@@ -495,58 +491,33 @@ def blendImagePair(image_1, image_2, num_matches):
 
     """
     kp1, kp2, matches = findMatchesBetweenImages(image_1, image_2, num_matches)
-    # homography, mask = findHomography(kp1, kp2, matches)
     homography = findHomography(kp1, kp2, matches)
-
-    ## TODO Remove: Uncomment for debugging
-    # matchesMask = mask.ravel().tolist()
-    # draw_params = dict(matchColor=(255, 0, 0),  # draw matches in green color
-    #                    singlePointColor=None,
-    #                    matchesMask=matchesMask,  # draw only inliers
-    #                    flags=2)
-    # img3 = cv2.drawMatches(
-    #     image_1, kp1, image_2, kp2, matches[:10], None, **draw_params
-    #     # matchColor=(255, 0, 0)
-    # )
-    # img3 = cv2.cvtColor(img3, cv2.COLOR_BGR2RGB)
-    # plt.imshow(img3); plt.show()
 
     corners_1 = getImageCorners(image_1)
     corners_2 = getImageCorners(image_2)
     min_xy, max_xy = getBoundingCorners(corners_1, corners_2, homography)
     left_image = warpCanvas(image_1, homography, min_xy, max_xy)
-    # plt.imshow(left_image); plt.show()
 
     output_image = np.zeros_like(left_image)
     right_image = np.zeros_like(left_image)
     min_xy = min_xy.astype(np.int)
     right_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
                 -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
+
     left_mask = createImageMask(left_image)
     right_mask = createImageMask(right_image)
-
-    # plt.imshow(left_mask); plt.show()
-    # plt.imshow(right_mask); plt.show()
-    l_mask, overlay_mask, r_mask = createRegionMasks(left_mask, right_mask)
-    # left_image[-min_xy[1]:-min_xy[1] + image_2.shape[0],
-    #            -min_xy[0]:-min_xy[0] + image_2.shape[1]] = image_2
-
-    # plt.imshow(left_image); plt.show()
+    l_mask, overlap_mask, r_mask = createRegionMasks(left_mask, right_mask)
 
     left_distance = findDistanceToMask(l_mask)
     right_distance = findDistanceToMask(r_mask)
-    # left_distance[~overlay_mask] = 0
-    # right_distance[~overlay_mask] = 0
-
     alpha_weights = generateAlphaWeights(left_distance, right_distance)
 
     output_image[l_mask] = left_image[l_mask]
     output_image[r_mask] = right_image[r_mask]
 
-    # plt.imshow(output_image); plt.show()
-
     for i in range(3):
-        output_image[:,:,i][overlay_mask] = alpha_weights[overlay_mask] * left_image[:,:,i][overlay_mask] + (1-alpha_weights[overlay_mask]) * right_image[:, :, i][overlay_mask]
+        output_image[:,:,i][overlap_mask] = alpha_weights[overlap_mask] * left_image[:,:,i][overlap_mask] \
+                                            + (1-alpha_weights[overlap_mask]) * right_image[:, :, i][overlap_mask]
 
     # plt.imshow(output_image); plt.show()
 
