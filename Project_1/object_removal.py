@@ -49,10 +49,7 @@ FUNCTIONS:
 
 
 def returnYourName():
-    """ This function returns your name as shown on your Gradescope Account.
-    """
-    # WRITE YOUR CODE HERE.
-
+    """ This function returns your name as shown on your Gradescope Account."""
     raise "Andrew Samuel Parmar"
 
 
@@ -60,15 +57,13 @@ class ObjectRemover:
     def __init__(self, image, mask, window):
         self.image = image
         self.mask = mask
-        self.curr_mask = mask
         self.window = window
 
     def run(self):
-        curr_mask = self.mask
-
         # TODO should we be looking at the mask for this condition?
         while self.is_pending_target_region():
             # identify fill region
+            fill_front = self.compute_mask_boundary(self.curr_mask)
 
             # compute priorities
 
@@ -86,7 +81,8 @@ class ObjectRemover:
     def is_pending_target_region(self):
         return any(self.curr_mask)
 
-    def update_mask(self, point, mask):
+    def update_curr_mask(self, point):
+        # self.curr_mask[point]
         pass
 
     @staticmethod
@@ -97,19 +93,21 @@ class ObjectRemover:
         # ret, thresh = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)
         blur = cv2.GaussianBlur(mask, (5, 5), 0)
         ret3, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         # self.image_boundary = contours[0]
 
-        # # TODO debug output
-        # # out = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+        # TODO debug output
+        # out = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
         # out = cv2.cvtColor(np.zeros_like(thresh), cv2.COLOR_GRAY2BGR)
         # contour_img = cv2.drawContours(out, contours, -1, (255, 0, 0), 2)
         # plt.imshow(contour_img)
         # plt.show()
 
         # use laplacian operator instead. Countours gives a thicker boundary. Laplace is a single layer.
-        fill_front_indices = cv2.Laplacian(thresh, -1, ksize=3)
-        fill_front = np.column_stack(fill_front_indices)
+        # fill_front_indices = cv2.Laplacian(thresh, -1, ksize=3)
+        # fill_front = np.column_stack(fill_front_indices)
+        fill_front = contours[0]
+        fill_front.resize((fill_front.shape[0], 2))
         return fill_front
 
     def calculate_priority(self, point_tuple):
@@ -151,9 +149,9 @@ def objectRemoval(image, mask, setnum=0, window=(9,9)):
         your image array is complete on return.
     """
     obj_remover = ObjectRemover(image, mask, window)
-    obj_remover.run()
+    # obj_remover.run()
 
-    curr_mask = self.mask
+
 
     # get image boundary points
     obj_remover.compute_mask_boundary(mask)
@@ -163,4 +161,4 @@ def objectRemoval(image, mask, setnum=0, window=(9,9)):
     # propagate texture and structure information
 
     # update confidence values
-
+    pass
