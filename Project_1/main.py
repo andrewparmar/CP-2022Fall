@@ -23,7 +23,7 @@ will always pass the AG since its possible that dependencies and versions
 changed if you add libraries. To check, run this command in the CS6475 python env:
 
     pip freeze > requirements.txt
-    
+
 The file requirements.txt will be created. Verify you have matplotlib 3.0.1,
 python 3.6.x, numpy 1.15.2, scipy 1.0.0 or reinstall your env following the
 Course Setup guidance.
@@ -54,27 +54,28 @@ if __name__ == "__main__":
     """
     # make the images/results folder
     output_dir = os.path.join(OUT_FOLDER)
-    
+
     try:
         os.makedirs(output_dir)
     except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
-    
-    for i in range(1,4):
+
+    # TODO change this back to 3.
+    for i in range(1, 2):
         # image names should be input_1, input_2, input_3
         start = time.time()
         print("\nProcessing file set", i)
-        image_name = SOURCE_FOLDER + 'input_' + str(i) + '.png'
-        mask_name = SOURCE_FOLDER + 'mask_' + str(i) + '.png'
+        image_name = SOURCE_FOLDER + 'input_' + str(i) + '.jpg'
+        mask_name = SOURCE_FOLDER + 'mask_' + str(i) + '.jpg'
 
         image = cv2.imread(image_name)
         mask = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)  # one channel only
-        
+
         print(image_name)
         print('image', image.shape, image.size / 3e3, 'kB')
         print('mask', mask.shape)
-        
+
         output = objectRemoval(image, mask, setnum=i, window=(9,9))
         cv2.imwrite(OUT_FOLDER + 'result_' + str(i) + '.png', output)
         end = time.time()
