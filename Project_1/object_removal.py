@@ -3,8 +3,8 @@
 import numpy as np
 import scipy as sp
 import cv2
-import scipy.signal                     # option for a 2D convolution library
-from matplotlib import pyplot as plt    # optional
+import scipy.signal  # option for a 2D convolution library
+from matplotlib import pyplot as plt  # optional
 
 ''' Project 1 - Object Removal
 
@@ -56,8 +56,23 @@ def returnYourName():
 class ObjectRemover:
     def __init__(self, image, mask, window):
         self.image = image
-        self.mask = mask
+        self.mask = self._setup_binary_mask(mask)
+        self.curr_mask = self.mask
         self.window = window
+        self.patch_area = window[0] * window[1]
+        self.alpha = 255
+        self._setup_maps()
+
+    def _setup_maps(self):
+        self.confidence_map = np.ones_like(self.mask)
+        self.confidence_map[self.mask == 255] = 0
+
+    @staticmethod
+    def _setup_binary_mask(mask):
+        k = 5
+        blur = cv2.GaussianBlur(mask, (k, k), 0)
+        _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return thresh
 
     def run(self):
         # TODO should we be looking at the mask for this condition?
@@ -66,6 +81,8 @@ class ObjectRemover:
             fill_front = self.compute_mask_boundary(self.curr_mask)
 
             # compute priorities
+            self._compute_priority(fill_front)
+            break
 
             # get patch with max priority
 
@@ -76,10 +93,54 @@ class ObjectRemover:
             # update confidence scores
 
             # update mask
-            # self.update_mask(point, mask)
+            # self.update_curr_mask(point)
+            pass
+
+    def _compute_priority(self, fill_front):
+        priorities = []
+        for point in fill_front:
+            patch_coords = self._get_patch_coordinates()
+            c_point = self._calculate_confidence(patch_coords)
+            d_point = self._calculate_data(patch_coords)
+
+            priority = c_point * d_point
+
+            priorities.append((priority, point))
+        print(priorities[:10])
+        pass
+
+    def _get_patch_coordinates(self, point):
+        """
+        Get boundary coordinates of the patch window centered at "point"
+        x1, y1 are the coordinates of the top left
+        x2, y2 are the coordinates of the bottom right
+        """
+        h, w = self.mask.shape
+        r, c = point
+        k = self.window[0] // 2
+        x_1 = max(0, r - k)
+        y_1 = max(0, c - k)
+        x_2 = min(h, r + k)
+        y_2 = min(w, c + k)
+
+        return x_1, y_1, x_2, y_2
+
+    def _calculate_confidence(self, patch_coords):
+        x_1, y_1, x_2, y_2 = patch_coords
+        confidence = self.confidence_map[x_1:x_2+1, y_1:y_2+1].sum()
+        return confidence / self.patch_area
+
+    def _calculate_data(self, patch_coords):
+        ...
+
 
     def is_pending_target_region(self):
-        return any(self.curr_mask)
+        # TODO: Silence this "pending" calculation
+        tmp = self.curr_mask/255
+        h, w = self.curr_mask.shape
+        pending = (tmp.sum() / (h * w)) * 100
+        print(f"% Pending {pending:.2}")
+        return self.curr_mask.any()
 
     def update_curr_mask(self, point):
         # self.curr_mask[point]
@@ -114,7 +175,7 @@ class ObjectRemover:
         pass
 
 
-def objectRemoval(image, mask, setnum=0, window=(9,9)):
+def objectRemoval(image, mask, setnum=0, window=(9, 9)):
     """ ALL IMAGES SUPPLIED OR RETURNED ARE UINT8.
     This function will be called three times; once for each of your
     image/mask pairs to produce your result images.
@@ -149,16 +210,6 @@ def objectRemoval(image, mask, setnum=0, window=(9,9)):
         your image array is complete on return.
     """
     obj_remover = ObjectRemover(image, mask, window)
-    # obj_remover.run()
+    obj_remover.run()
 
-
-
-    # get image boundary points
-    obj_remover.compute_mask_boundary(mask)
-
-    # compute patch priorities
-
-    # propagate texture and structure information
-
-    # update confidence values
-    pass
+    return np.zeros_like(image, dtype=np.uint8)
