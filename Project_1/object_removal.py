@@ -56,6 +56,7 @@ def returnYourName():
 class ObjectRemover:
     def __init__(self, image, mask, window):
         self.image = image
+        self.curr_image = self.image
         self.mask = self._setup_binary_mask(mask)
         self.curr_mask = self.mask
         self.window = window
@@ -96,12 +97,23 @@ class ObjectRemover:
             # self.update_curr_mask(point)
             pass
 
+    def is_pending_target_region(self):
+        # TODO: Silence this "pending" calculation
+        tmp = self.curr_mask/255
+        h, w = self.curr_mask.shape
+        pending = (tmp.sum() / (h * w)) * 100
+        print(f"% Pending {pending:.2}")
+        return self.curr_mask.any()
+
     def _compute_priority(self, fill_front):
+        # reusable calculations
+        self._compute_point_normals()
+
         priorities = []
         for point in fill_front:
-            patch_coords = self._get_patch_coordinates()
+            patch_coords = self._get_patch_coordinates(point)
             c_point = self._calculate_confidence(patch_coords)
-            d_point = self._calculate_data(patch_coords)
+            d_point = self._calculate_data(point, patch_coords)
 
             priority = c_point * d_point
 
@@ -128,19 +140,45 @@ class ObjectRemover:
     def _calculate_confidence(self, patch_coords):
         x_1, y_1, x_2, y_2 = patch_coords
         confidence = self.confidence_map[x_1:x_2+1, y_1:y_2+1].sum()
-        return confidence / self.patch_area
+        patch_area = (x_2-x_1) * (y_2-y_1)
+        # return confidence / self.patch_area # TODO: update patch area to use patch window size
+        return confidence / patch_area
 
-    def _calculate_data(self, patch_coords):
-        ...
+    def _calculate_data(self, point, patch_coords):
+        self._compute_image_patch_gradient(patch_coords)
 
+        pass
 
-    def is_pending_target_region(self):
-        # TODO: Silence this "pending" calculation
-        tmp = self.curr_mask/255
-        h, w = self.curr_mask.shape
-        pending = (tmp.sum() / (h * w)) * 100
-        print(f"% Pending {pending:.2}")
-        return self.curr_mask.any()
+    def _compute_point_normals(self):
+        _, binary_mask = cv2.threshold(self.curr_mask, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        grad_x = cv2.Sobel(~binary_mask, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_DEFAULT)
+        grad_y = cv2.Sobel(~binary_mask, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_DEFAULT)
+
+        grad_x_unit = grad_x / grad_x.max()
+        grad_y_unit = grad_y / grad_y.max()
+
+        self.unit_normal = np.dstack((np.abs(grad_x_unit), np.abs(grad_y_unit)))
+        # The normal will be magnitude 1 at all points on the frontier. What matters then is the difference of angle
+        # between the contour normal and the image gradient normal.
+
+    def _compute_image_patch_gradient(self, patch_coords):
+        x_1, y_1, x_2, y_2 = patch_coords
+        mask_patch = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
+        image_patch = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1]
+
+        image_gray = cv2.cvtColor(image_patch, cv2.COLOR_BGR2GRAY)
+
+        grad_x = cv2.Sobel(image_gray, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_DEFAULT)
+        grad_y = cv2.Sobel(image_gray, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_DEFAULT)
+
+        gradient_mag = np.sqrt((grad_x**2 + grad_y**2))
+
+        max_gradient = np.argmax(gradient_mag)
+
+        # maybe calculate the gradient in the patch first. Then mask it off and take the max.
+        # image_patch[mask_patch == 1] = None
+        pass
 
     def update_curr_mask(self, point):
         # self.curr_mask[point]
