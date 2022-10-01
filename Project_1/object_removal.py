@@ -5,6 +5,7 @@ import scipy as sp
 import cv2
 import scipy.signal  # option for a 2D convolution library
 from matplotlib import pyplot as plt  # optional
+np.set_printoptions(edgeitems=30, linewidth=100000)
 
 ''' Project 1 - Object Removal
 
@@ -83,19 +84,45 @@ class ObjectRemover:
 
             # compute priorities
             self._compute_priority(fill_front)
-            break
 
             # get patch with max priority
+            priority_patch = self.priority_patch
+            priority_point = self.priority_point
 
             # find exemplar in source_region that minimizes distance func
+            # * use template matching first, then try something more fancy
+            self._find_best_matching_exemplar()
 
             # copy image data from source to target region
 
             # update confidence scores
 
             # update mask
-            # self.update_curr_mask(point)
+            self.update_curr_mask()
             pass
+
+    def _find_best_matching_exemplar(self):
+        x_1, y_1, x_2, y_2 = self.priority_patch
+        template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :]
+        mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
+        mask_tmp = mask.reshape(9, 9, 1).repeat(3, axis=2)
+
+        img_tmp = self.curr_image.copy()
+        img_tmp[x_1:x_2 + 1, y_1:y_2 + 1, :] = 0
+        res = cv2.matchTemplate(img_tmp, template, cv2.TM_SQDIFF, None, ~mask_tmp)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+        baz = self.curr_image[min_loc[1]:min_loc[1]+9, min_loc[0]:min_loc[0]+9, :]
+        self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1] = baz
+
+        # TODO: Debug show rectangle around match location
+        # top_left = min_loc
+        # h, w = template.shape[:2]
+        # bottom_right = (top_left[0] + w, top_left[1] + h)
+        # cv2.rectangle(img_tmp, top_left, bottom_right, 255, 2)
+        # plt.imshow(img_tmp);
+        # plt.show()
+        pass
 
     def is_pending_target_region(self):
         # TODO: Silence this "pending" calculation
@@ -110,16 +137,21 @@ class ObjectRemover:
         self._compute_point_normals()
 
         priorities = []
+        max_priority = float("-inf")
+        self.priority_point = None
+        self.priority_patch = None
         for point in fill_front:
             patch_coords = self._get_patch_coordinates(point)
             c_point = self._calculate_confidence(patch_coords)
             d_point = self._calculate_data(point, patch_coords)
 
             priority = c_point * d_point
-
+            if priority > max_priority:
+                max_priority = priority
+                self.priority_point = point
+                self.priority_patch = patch_coords
             priorities.append((priority, point))
-        print(priorities[:10])
-        pass
+        # print(priorities[:10])
 
     def _get_patch_coordinates(self, point):
         """
@@ -145,9 +177,10 @@ class ObjectRemover:
         return confidence / patch_area
 
     def _calculate_data(self, point, patch_coords):
-        self._compute_image_patch_gradient(patch_coords)
-
-        pass
+        max_gradient_orth = self._compute_image_patch_gradient(patch_coords)
+        max_normal = self.unit_normal[point[0], point[1]]
+        data = np.abs(max_gradient_orth.dot(max_normal))/self.alpha
+        return data
 
     def _compute_point_normals(self):
         _, binary_mask = cv2.threshold(self.curr_mask, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -171,18 +204,27 @@ class ObjectRemover:
 
         grad_x = cv2.Sobel(image_gray, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_DEFAULT)
         grad_y = cv2.Sobel(image_gray, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_DEFAULT)
+        grad_x_orth = grad_y
+        grad_y_orth = -grad_x
+        gradient_orth = np.dstack((grad_x_orth, grad_y_orth))
 
+        # maybe calculate the gradient in the patch first. Use regular or orthonormal, it's the same.
         gradient_mag = np.sqrt((grad_x**2 + grad_y**2))
 
-        max_gradient = np.argmax(gradient_mag)
+        # Then mask it off and take the max.
+        # Dilate the mask to avoid the gradient between the source and the frontier.
+        # Just take off 1 pixel along the frontier. TODO: do we need two pixels off?
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        dilated_mask = cv2.dilate(mask_patch, kernel, iterations=1)
+        gradient_mag[dilated_mask == 255] = 0
 
-        # maybe calculate the gradient in the patch first. Then mask it off and take the max.
-        # image_patch[mask_patch == 1] = None
-        pass
+        loc = np.unravel_index(np.argmax(gradient_mag, axis=None), gradient_mag.shape)
 
-    def update_curr_mask(self, point):
-        # self.curr_mask[point]
-        pass
+        return gradient_orth[loc]
+
+    def update_curr_mask(self):
+        x_1, y_1, x_2, y_2 = self.priority_patch
+        self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1] = 0
 
     @staticmethod
     def compute_mask_boundary(mask):
