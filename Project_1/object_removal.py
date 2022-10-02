@@ -5,6 +5,7 @@ import scipy as sp
 import cv2
 import scipy.signal  # option for a 2D convolution library
 from matplotlib import pyplot as plt  # optional
+
 np.set_printoptions(edgeitems=30, linewidth=100000)
 
 ''' Project 1 - Object Removal
@@ -57,31 +58,36 @@ def returnYourName():
 class ObjectRemover:
     def __init__(self, image, mask, window):
         self.image = image
-        self.curr_image = self.image
         self.mask = self._setup_binary_mask(mask)
-        self.curr_mask = self.mask
         self.window = window
         self.patch_area = window[0] * window[1]
         self.alpha = 255
-        self._setup_maps()
-        self.iteration = 0
+        self._setup_working_vars()
 
-    def _setup_maps(self):
-        self.confidence_map = np.ones_like(self.mask, dtype=np.float32)
-        self.confidence_map[self.mask == 255] = 0
+    def _setup_working_vars(self):
+        """setup working datastructures"""
+        self.curr_image = self.image
+        self.curr_mask = self.mask
+        self.curr_fill_front = None
+        self.curr_confidence = np.ones_like(self.mask, dtype=np.float32)
+        self.curr_confidence[self.mask == 255] = 0
+        self.contour_img = None
+        self.iteration = 0
 
     @staticmethod
     def _setup_binary_mask(mask):
         k = 5
         blur = cv2.GaussianBlur(mask, (k, k), 0)
-        _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        return thresh
+        thresh, im_bw = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        plt.imshow(im_bw, cmap="gray")
+        plt.show()
+        return im_bw
 
     def run(self):
         # TODO should we be looking at the mask for this condition?
         while self.is_pending_target_region():
             # identify fill region
-            fill_front = self.compute_mask_boundary(self.curr_mask)
+            fill_front = self.compute_mask_boundary()
 
             # compute priorities
             self._compute_priority(fill_front)
@@ -106,33 +112,32 @@ class ObjectRemover:
 
     def is_pending_target_region(self):
         # TODO: Silence this "pending" calculation
-        tmp = self.curr_mask/255
+        tmp = self.curr_mask / 255
         h, w = self.curr_mask.shape
         pending = (tmp.sum() / (h * w)) * 100
         print(f"% Pending {pending:.2}")
         return self.curr_mask.any()
 
-    def compute_mask_boundary(self, mask):
+    def compute_mask_boundary(self):
         """
         Passing in a mask instead of using self.mask, since the mask should be updated in each iteration
         """
-        # ret, thresh = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)
-        blur = cv2.GaussianBlur(mask, (5, 5), 0)
-        ret3, thresh = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # self.image_boundary = contours[0]
+        contours, hierarchy = cv2.findContours(self.curr_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         # TODO debug output
-        # out = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-        out = cv2.cvtColor(np.zeros_like(thresh), cv2.COLOR_GRAY2BGR)
+        out = cv2.cvtColor(np.zeros_like(self.curr_mask), cv2.COLOR_GRAY2BGR)
         self.contour_img = cv2.drawContours(out, contours, -1, (255, 0, 0), thickness=1)  # the colors are (R,G,B)
         # plt.imshow(self.contour_img); plt.show()
+
+        fill_front = contours[0]
+        fill_front.resize((fill_front.shape[0], 2))
 
         # use laplacian operator instead. Countours gives a thicker boundary. Laplace is a single layer.
         # fill_front_indices = cv2.Laplacian(thresh, -1, ksize=3)
         # fill_front = np.column_stack(fill_front_indices)
-        fill_front = contours[0]
-        fill_front.resize((fill_front.shape[0], 2))
+
+        self.curr_fill_front = fill_front
+
         return fill_front
 
     def _compute_priority(self, fill_front):
@@ -176,19 +181,19 @@ class ObjectRemover:
 
     def _calculate_confidence(self, patch_coords):
         x_1, y_1, x_2, y_2 = patch_coords
-        confidence = self.confidence_map[x_1:x_2+1, y_1:y_2+1].sum()
-        patch_area = (x_2-x_1) * (y_2-y_1)
+        confidence = self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1].sum()
+        patch_area = (x_2 - x_1) * (y_2 - y_1)
         # return confidence / self.patch_area # TODO: update patch area to use patch window size
         return confidence / patch_area
 
     def _calculate_data(self, point, patch_coords):
         max_gradient_orth = self._compute_image_patch_gradient(patch_coords)
         max_normal = self.unit_normal[point[0], point[1]]
-        data = np.abs(max_gradient_orth.dot(max_normal))/self.alpha
+        data = np.abs(max_gradient_orth.dot(max_normal)) / self.alpha
         return data
 
     def _compute_point_normals(self):
-        _, binary_mask = cv2.threshold(self.curr_mask, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        binary_mask = self.curr_mask
 
         grad_x = cv2.Sobel(~binary_mask, cv2.CV_32F, 1, 0, ksize=3, borderType=cv2.BORDER_DEFAULT)
         grad_y = cv2.Sobel(~binary_mask, cv2.CV_32F, 0, 1, ksize=3, borderType=cv2.BORDER_DEFAULT)
@@ -214,7 +219,7 @@ class ObjectRemover:
         gradient_orth = np.dstack((grad_x_orth, grad_y_orth))
 
         # maybe calculate the gradient in the patch first. Use regular or orthonormal, it's the same.
-        gradient_mag = np.sqrt((grad_x**2 + grad_y**2))
+        gradient_mag = np.sqrt((grad_x ** 2 + grad_y ** 2))
 
         # Then mask it off and take the max.
         # Dilate the mask to avoid the gradient between the source and the frontier.
@@ -233,7 +238,8 @@ class ObjectRemover:
         x, y = self.priority_point
         foo[y, x, :] = (0, 255, 0)
         if not self.iteration % 10:
-            plt.imshow(cv2.cvtColor(foo, cv2.COLOR_BGR2RGB)); plt.show()
+            plt.imshow(cv2.cvtColor(foo, cv2.COLOR_BGR2RGB))
+            plt.show()
 
         template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :]
         mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
@@ -244,11 +250,11 @@ class ObjectRemover:
         res = cv2.matchTemplate(img_tmp, template, cv2.TM_SQDIFF, None, ~mask_tmp)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-        baz = self.curr_image[min_loc[1]:min_loc[1]+9, min_loc[0]:min_loc[0]+9, :].copy()
+        baz = self.curr_image[min_loc[1]:min_loc[1] + 9, min_loc[0]:min_loc[0] + 9, :].copy()
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1] = baz  # applying full matched template to patch.
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1,:][mask_tmp==255] = baz  # applying full matched template to patch.
         # baz[mask_tmp == 255] = 0 # black out mask area to see how patch is applied.
-        self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255] # applies pixel values ot the masked area.
+        self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255] # applies pixel values to masked cells.
 
         # TODO: Debug show rectangle around match location
         top_left = min_loc
@@ -258,19 +264,20 @@ class ObjectRemover:
         img_tmp[y, x, :] = (0, 255, 0)
         cv2.rectangle(img_tmp, top_left, bottom_right, 255, 2)
         if not self.iteration % 10:
-            plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB)); plt.show()
-            plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB));plt.show()
+            plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB));
+            plt.show()
+            plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB));
+            plt.show()
         pass
 
     def _update_confidence(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
         mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
-        self.confidence_map[x_1:x_2+1, y_1:y_2+1][mask == 255] = self.priority_confidence
+        self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][mask == 255] = self.priority_confidence
 
     def _update_curr_mask(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
         self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1] = 0
-
 
 
 def objectRemoval(image, mask, setnum=0, window=(9, 9)):
