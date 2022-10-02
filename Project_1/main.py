@@ -62,7 +62,7 @@ if __name__ == "__main__":
             raise
 
     # TODO change this back to 3.
-    for i in range(4, 5):
+    for i in range(5, 6):
         # image names should be input_1, input_2, input_3
         start = time.time()
         print("\nProcessing file set", i)

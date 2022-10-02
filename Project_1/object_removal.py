@@ -64,9 +64,10 @@ class ObjectRemover:
         self.patch_area = window[0] * window[1]
         self.alpha = 255
         self._setup_maps()
+        self.iteration = 0
 
     def _setup_maps(self):
-        self.confidence_map = np.ones_like(self.mask)
+        self.confidence_map = np.ones_like(self.mask, dtype=np.float32)
         self.confidence_map[self.mask == 255] = 0
 
     @staticmethod
@@ -100,7 +101,8 @@ class ObjectRemover:
 
             # update mask
             self._update_curr_mask()
-            pass
+
+            self.iteration += 1
 
     def is_pending_target_region(self):
         # TODO: Silence this "pending" calculation
@@ -141,6 +143,7 @@ class ObjectRemover:
         max_priority = float("-inf")
         self.priority_point = None
         self.priority_patch = None
+        self.priority_confidence = None
         for point in fill_front:
             patch_coords = self._get_patch_coordinates(point)
             c_point = self._calculate_confidence(patch_coords)
@@ -151,6 +154,7 @@ class ObjectRemover:
                 max_priority = priority
                 self.priority_point = point
                 self.priority_patch = patch_coords
+                self.priority_confidence = c_point
             priorities.append((priority, point))
         # print(priorities[:10])
 
@@ -228,7 +232,8 @@ class ObjectRemover:
         foo = self.contour_img.copy()
         x, y = self.priority_point
         foo[y, x, :] = (0, 255, 0)
-        plt.imshow(cv2.cvtColor(foo, cv2.COLOR_BGR2RGB)); plt.show()
+        if not self.iteration % 10:
+            plt.imshow(cv2.cvtColor(foo, cv2.COLOR_BGR2RGB)); plt.show()
 
         template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :]
         mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
@@ -252,12 +257,15 @@ class ObjectRemover:
         img_tmp[x_1:x_2 + 1, y_1:y_2 + 1] = mask_tmp
         img_tmp[y, x, :] = (0, 255, 0)
         cv2.rectangle(img_tmp, top_left, bottom_right, 255, 2)
-        plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB)); plt.show()
-        plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB));plt.show()
+        if not self.iteration % 10:
+            plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB)); plt.show()
+            plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB));plt.show()
         pass
 
     def _update_confidence(self):
-        pass
+        x_1, y_1, x_2, y_2 = self.priority_patch
+        mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
+        self.confidence_map[x_1:x_2+1, y_1:y_2+1][mask == 255] = self.priority_confidence
 
     def _update_curr_mask(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
