@@ -75,13 +75,13 @@ class ObjectRemover:
         self.iteration = 0
         self.patch_map = dict()
 
-    @staticmethod
-    def _setup_binary_mask(mask):
+    def _setup_binary_mask(self, mask):
         k = 5
         blur = cv2.GaussianBlur(mask, (k, k), 0)
         thresh, im_bw = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        plt.imshow(im_bw, cmap="gray")
-        plt.show()
+        # plt.imshow(im_bw, cmap="gray")
+        # plt.show()
+        self._debug_plot(im_bw)
         return im_bw
 
     def run(self):
@@ -241,6 +241,10 @@ class ObjectRemover:
 
         return gradient_orth[loc]
 
+    def _debug_plot(self, image):
+        plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        plt.show()
+
     def _find_best_matching_exemplar(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
 
@@ -249,8 +253,7 @@ class ObjectRemover:
         x, y = self.priority_point
         foo[y, x, :] = (0, 255, 0)
         # if not self.iteration % 10:
-        # plt.imshow(cv2.cvtColor(foo, cv2.COLOR_BGR2RGB))
-        # plt.show()
+        # self._debug_plot(foo)
 
         # Use the template from the working image.
         template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :]
@@ -258,8 +261,13 @@ class ObjectRemover:
         h, w = mask.shape
         mask_tmp = mask.reshape(h, w, 1).repeat(3, axis=2)
 
+        full_mask = self.mask.copy()
+        u, v = full_mask.shape
+        full_mask = full_mask.reshape(u, v, 1).repeat(3, axis=2)
+
         img_tmp = self.curr_image.copy()
         # img_tmp[mask255]
+        img_tmp[full_mask == 255] = full_mask[full_mask == 255]
         img_tmp[x_1:x_2 + 1, y_1:y_2 + 1, :] = 0
         res = cv2.matchTemplate(img_tmp, template, cv2.TM_SQDIFF_NORMED, None, ~mask_tmp)
         # res = cv2.matchTemplate(img_tmp, template, cv2.TM_CCOEFF_NORMED, None)
@@ -268,25 +276,32 @@ class ObjectRemover:
         loc = min_loc
         # loc = max_loc
 
-        baz = self.curr_image[loc[1]:loc[1] + 9, loc[0]:loc[0] + 9, :].copy()
+        p, q = self.window
+        baz = self.curr_image[loc[1]:loc[1] + p, loc[0]:loc[0] + q, :].copy()
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1] = baz  # applying full matched template to patch.
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1,:][mask_tmp==255] = baz  # applying full matched template to patch.
         # baz[mask_tmp == 255] = 0 # black out mask area to see how patch is applied.
-        self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255] # applies pixel values to masked cells.
+        # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255] # applies pixel values to masked cells.
 
 
-        # #############
-        # match_mask = self.curr_mask[loc[1]:loc[1] + 9, loc[0]:loc[0] + 9].copy()
-        # match_mask = match_mask.reshape(h, w, 1).repeat(3, axis=2)
-        # a = mask_tmp == 255
-        # b = match_mask == 255  # region of the matched patch that falls inside the image mask
-        # c = a & ~b  # ignore pixel values matched inside mask region.
-        # patch_region_applied = np.zeros_like(mask_tmp)
-        # patch_region_applied[c] = 255
-        # # plt.imshow(patch_region_applied); plt.show()
-        # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][c] = baz[c]  # applies pixel values to masked cells
-        # self.patch_region_filled = patch_region_applied[:,:,0]
-        # #############
+        ############
+        flag = False
+        match_mask = self.curr_mask[loc[1]:loc[1] + p, loc[0]:loc[0] + q].copy()
+        match_mask = match_mask.reshape(h, w, 1).repeat(3, axis=2)
+        a = mask_tmp == 255
+        b = match_mask == 255  # region of the matched patch that falls inside the image mask
+        c = a & ~b  # ignore pixel values matched inside mask region.
+        patch_region_applied = np.zeros_like(mask_tmp)
+        patch_region_applied[c] = 255
+        # plt.imshow(patch_region_applied); plt.show()
+        if np.any(c) and flag:
+            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][c] = baz[c]  # applies pixel values to masked cells
+            self.patch_region_filled = patch_region_applied[:, :, 0]
+        else:
+            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255]
+            self.patch_region_filled = mask_tmp[:,:,0]
+
+        ############
 
 
 
@@ -299,31 +314,40 @@ class ObjectRemover:
         cv2.rectangle(img_tmp, top_left, bottom_right, 255, 1)
 
         debug_out = np.hstack((self.image, img_tmp, self.curr_image))
-        if not self.iteration % 1000:
+        # if not self.iteration % 20:
         # plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB))
         # plt.show()
         # plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
         # plt.show()
         # cv2.imshow("patched_image", cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
-            cv2.imshow("patched_image", debug_out)
-            cv2.waitKey(0)
+        cv2.imshow("patched_image", debug_out)
+        cv2.waitKey(0)
 
         pass
 
     def _update_confidence(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
         mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
-        self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][mask == 255] = self.priority_confidence
-        # self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = self.priority_confidence
+        # self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][mask == 255] = self.priority_confidence
+        self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = self.priority_confidence
 
     def _update_curr_mask(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
-        self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1] = 0
-        # self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = 0
+        # self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1] = 0
+        self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = 0
 
     def get_final_image(self):
         return self.curr_image
 
+
+window_map = {
+    1: (29, 29),
+    2: (29, 29),
+    3: (9, 9),
+    4: (9, 9),
+    5: (9, 9),
+    6: (29, 29),
+}
 
 def objectRemoval(image, mask, setnum=0, window=(9, 9)):
     """ ALL IMAGES SUPPLIED OR RETURNED ARE UINT8.
@@ -359,6 +383,8 @@ def objectRemoval(image, mask, setnum=0, window=(9, 9)):
         Make sure you deal with any needed normalization or clipping, so that
         your image array is complete on return.
     """
+    if setnum > 0:
+        window = window_map.get(setnum, (9, 9))
     obj_remover = ObjectRemover(image, mask, window)
     obj_remover.run()
 
