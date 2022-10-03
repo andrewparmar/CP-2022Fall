@@ -156,9 +156,9 @@ To do this, you may experiment with various image colorspaces (HSV, YUV, HLS, CI
 *Hint:* investigate your histograms and control your outliers to reduce artifacts
  
 
-### 3c. One Best HDR Image Requirements
+### 3c. Best HDR Image Requirements
 
-Generate your `bestHDR` code in `hdr.py` to take as input your basicHDR image and output your bestHDR image. You will also implement the `colorspaceEnhancement` function which will take in your bestHDR image and perform color enhancement on it. All code must be in `hdr.py`. Inputs and outputs are defined in the docstring. The code will be tested for operability in the autograder, and by TAs. Your images and their histogram-CDF plots will go into your report. You will discuss your method and its code. 
+Generate your `bestHDR` code in `hdr.py` to take as input your basicHDR image and output your bestHDR image (see the paper suggestion in 3a). You will also implement the `colorspaceEnhancement` function which will take in your bestHDR image and perform color enhancement on it. All code must be in `hdr.py`. Inputs and outputs are defined in the docstring. The code will be tested for operability in the autograder, and by TAs. Your images and their histogram-CDF plots will go into your report. You will discuss your method and its code. 
     
 Write your code *without* using opencv **major algorithm functions**. No cv2.doMyHomeworkForMe(). Specifically, no cv2 versions of CLAHE, or Tonemaps: Debevec, Robertson, Mertens, Drago, Durand, Mantiuk or Reinhard. Nothing in this project can be done using outside software excepting input image alignment for those who take their own pictures. 
 
