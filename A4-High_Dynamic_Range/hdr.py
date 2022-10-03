@@ -462,7 +462,7 @@ def colorspaceEnhancement(image):
     Parameters
     ----------
     image: numpy.ndarray
-        Your basicHDR image array of dimensions (HxWx3) and type np.uint8
+        Your basicHDR image array of dimensions (HxWx3) and type np.uint64
 
     Returns
     -------
