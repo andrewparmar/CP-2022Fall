@@ -81,10 +81,10 @@ Be careful regarding arithmetic overflow on function outputs. In this assignment
   
 When you are ready, submit your code to the Gradescope autograder for scoring. We will enforce the following
  penalties for excessive submissions:
-  * <= 15 submissions -> No penalty                                         
-  * <= 25 but >15 submissions -> -5 penalty
-  * <= 35 but >25 submissions -> -10 penalty
-  * more than 35 submissions -> -20 penalty
+- <= 20 submissions → No penalty 
+- <= 30 but >20 submissions → -5 penalty
+- <= 40 but >30 submissions → -10 penalty
+- more than 40 submissions → -20 penalty
   
 
 ## 2. HDR Image Sets
