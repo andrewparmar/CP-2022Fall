@@ -5,6 +5,7 @@ import scipy as sp
 import cv2
 import scipy.signal  # option for a 2D convolution library
 from matplotlib import pyplot as plt  # optional
+import time
 
 np.set_printoptions(edgeitems=30, linewidth=100000)
 
@@ -67,7 +68,7 @@ class ObjectRemover:
     def _setup_working_vars(self):
         """setup working datastructures"""
         self.curr_image = self.image.copy()
-        self.curr_mask = self.mask
+        self.curr_mask = self.mask.copy()
         self.curr_fill_front = None
         self.curr_confidence = np.ones_like(self.mask, dtype=np.float32)
         self.curr_confidence[self.mask == 255] = 0
@@ -248,36 +249,29 @@ class ObjectRemover:
     def _find_best_matching_exemplar(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
 
-        # TODO Debug: Show priority point in contour image.
-        foo = self.contour_img.copy()
-        x, y = self.priority_point
-        foo[y, x, :] = (0, 255, 0)
-        # if not self.iteration % 10:
-        # self._debug_plot(foo)
-
         # Use the template from the working image.
-        template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :]
-        mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
+        template = self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1, :].copy()
+        mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1].copy()
         h, w = mask.shape
-        mask_tmp = mask.reshape(h, w, 1).repeat(3, axis=2)
+        template_mask = mask.reshape(h, w, 1).repeat(3, axis=2)
 
-        full_mask = self.mask.copy()
-        u, v = full_mask.shape
-        full_mask = full_mask.reshape(u, v, 1).repeat(3, axis=2)
+        image_mask = self.mask.copy()
+        u, v = image_mask.shape
+        full_mask = image_mask.reshape(u, v, 1).repeat(3, axis=2)
 
-        img_tmp = self.curr_image.copy()
-        # img_tmp[mask255]
-        img_tmp[full_mask == 255] = full_mask[full_mask == 255]
-        img_tmp[x_1:x_2 + 1, y_1:y_2 + 1, :] = 0
-        res = cv2.matchTemplate(img_tmp, template, cv2.TM_SQDIFF_NORMED, None, ~mask_tmp)
+        # source_region = self.curr_image.copy()
+        source_region = self.image.copy()
+        source_region[full_mask == 255] = full_mask[full_mask == 255]  # Do not check for match in masked region.
+        source_region[x_1:x_2 + 1, y_1:y_2 + 1, :] = 0  # Do not check for match in current patch.
+        res = cv2.matchTemplate(source_region, template, cv2.TM_SQDIFF_NORMED, None, ~template_mask)
         # res = cv2.matchTemplate(img_tmp, template, cv2.TM_CCOEFF_NORMED, None)
-        cv2.normalize(res, res, 0, 1, cv2.NORM_MINMAX, -1)
+        # cv2.normalize(res, res, 0, 1, cv2.NORM_MINMAX, -1)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         loc = min_loc
         # loc = max_loc
 
         p, q = self.window
-        baz = self.curr_image[loc[1]:loc[1] + p, loc[0]:loc[0] + q, :].copy()
+        matched_patch = self.curr_image[loc[1]:loc[1] + p, loc[0]:loc[0] + q, :].copy()
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1] = baz  # applying full matched template to patch.
         # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1,:][mask_tmp==255] = baz  # applying full matched template to patch.
         # baz[mask_tmp == 255] = 0 # black out mask area to see how patch is applied.
@@ -285,35 +279,39 @@ class ObjectRemover:
 
 
         ############
-        flag = False
+        flag = True
         match_mask = self.curr_mask[loc[1]:loc[1] + p, loc[0]:loc[0] + q].copy()
         match_mask = match_mask.reshape(h, w, 1).repeat(3, axis=2)
-        a = mask_tmp == 255
+        a = template_mask == 255
         b = match_mask == 255  # region of the matched patch that falls inside the image mask
         c = a & ~b  # ignore pixel values matched inside mask region.
-        patch_region_applied = np.zeros_like(mask_tmp)
+        patch_region_applied = np.zeros_like(template_mask)
         patch_region_applied[c] = 255
         # plt.imshow(patch_region_applied); plt.show()
         if np.any(c) and flag:
-            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][c] = baz[c]  # applies pixel values to masked cells
+            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][c] = matched_patch[c]  # applies pixel values to masked cells
             self.patch_region_filled = patch_region_applied[:, :, 0]
         else:
-            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255]
-            self.patch_region_filled = mask_tmp[:,:,0]
+            self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][template_mask == 255] = matched_patch[template_mask == 255]
+            self.patch_region_filled = template_mask[:,:,0]
 
         ############
 
-
-
+        # TODO Debug: Show priority point in contour image.
+        foo = self.contour_img.copy()
+        x, y = self.priority_point
+        foo[y, x, :] = (0, 255, 0)
+        # if not self.iteration % 10:
+        # self._debug_plot(foo)
         # TODO: Debug show rectangle around match location
         top_left = loc
         h, w = template.shape[:2]
         bottom_right = (top_left[0] + w, top_left[1] + h)
-        img_tmp[x_1:x_2 + 1, y_1:y_2 + 1] = mask_tmp
-        img_tmp[y, x, :] = (0, 255, 0)
-        cv2.rectangle(img_tmp, top_left, bottom_right, 255, 1)
+        source_region[x_1:x_2 + 1, y_1:y_2 + 1] = template_mask
+        source_region[y, x, :] = (0, 255, 0)
+        cv2.rectangle(source_region, top_left, bottom_right, 255, 1)
 
-        debug_out = np.hstack((self.image, img_tmp, self.curr_image))
+        debug_out = np.hstack((foo, source_region, self.curr_image))
         # if not self.iteration % 20:
         # plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB))
         # plt.show()
@@ -321,7 +319,7 @@ class ObjectRemover:
         # plt.show()
         # cv2.imshow("patched_image", cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
         cv2.imshow("patched_image", debug_out)
-        cv2.waitKey(0)
+        cv2.waitKey(100)
 
         pass
 
@@ -341,12 +339,13 @@ class ObjectRemover:
 
 
 window_map = {
-    1: (29, 29),
+    1: (39, 39),
     2: (29, 29),
-    3: (9, 9),
+    3: (39, 39),
     4: (9, 9),
     5: (9, 9),
     6: (29, 29),
+    7: (29, 29),
 }
 
 def objectRemoval(image, mask, setnum=0, window=(9, 9)):
