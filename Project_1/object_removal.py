@@ -5,9 +5,9 @@ import scipy as sp
 import cv2
 import scipy.signal  # option for a 2D convolution library
 from matplotlib import pyplot as plt  # optional
-import time
 
 np.set_printoptions(edgeitems=30, linewidth=100000)
+VERBOSE = False
 
 ''' Project 1 - Object Removal
 
@@ -53,7 +53,7 @@ FUNCTIONS:
 
 def returnYourName():
     """ This function returns your name as shown on your Gradescope Account."""
-    raise "Andrew Samuel Parmar"
+    return "Andrew Samuel Parmar"
 
 
 class ObjectRemover:
@@ -82,7 +82,8 @@ class ObjectRemover:
         thresh, im_bw = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
         # plt.imshow(im_bw, cmap="gray")
         # plt.show()
-        self._debug_plot(im_bw)
+        if VERBOSE:
+            self._debug_plot(im_bw)
         return im_bw
 
     def run(self):
@@ -118,10 +119,11 @@ class ObjectRemover:
 
     def is_pending_target_region(self):
         # TODO: Silence this "pending" calculation
-        tmp = self.curr_mask / 255
-        h, w = self.curr_mask.shape
-        pending = (tmp.sum() / (h * w)) * 100
-        print(f"% Pending {pending:.2}")
+        if VERBOSE:
+            tmp = self.curr_mask / 255
+            h, w = self.curr_mask.shape
+            pending = (tmp.sum() / (h * w)) * 100
+            print(f"% Pending {pending:.2}")
         return self.curr_mask.any()
 
     def compute_mask_boundary(self):
@@ -318,10 +320,9 @@ class ObjectRemover:
         # plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
         # plt.show()
         # cv2.imshow("patched_image", cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
-        cv2.imshow("patched_image", debug_out)
-        cv2.waitKey(100)
-
-        pass
+        if VERBOSE:
+            cv2.imshow("patched_image", debug_out)
+            cv2.waitKey(0)
 
     def _update_confidence(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
