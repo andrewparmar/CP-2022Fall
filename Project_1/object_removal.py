@@ -80,8 +80,6 @@ class ObjectRemover:
         k = 5
         blur = cv2.GaussianBlur(mask, (k, k), 0)
         thresh, im_bw = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        # plt.imshow(im_bw, cmap="gray")
-        # plt.show()
         if VERBOSE:
             self._debug_plot(im_bw)
         return im_bw
@@ -95,15 +93,9 @@ class ObjectRemover:
             # compute priorities
             self._compute_priority()
 
-            # get patch with max priority
-            priority_patch = self.priority_patch
-            priority_point = self.priority_point
-
             # find exemplar in source_region that minimizes distance func
             # * use template matching first, then try something more fancy
             self._find_best_matching_exemplar()
-
-            # copy image data from source to target region
 
             # update confidence scores
             self._update_confidence()
@@ -134,16 +126,9 @@ class ObjectRemover:
 
         out = cv2.cvtColor(np.zeros_like(self.curr_mask), cv2.COLOR_GRAY2BGR)
         self.contour_img = cv2.drawContours(out, contours, -1, (255, 0, 0), thickness=1)  # the colors are (R,G,B)
-        # TODO debug output
-        # plt.imshow(self.contour_img); plt.show()
 
         fill_front = contours[0]
         fill_front.resize((fill_front.shape[0], 2))
-
-        # use laplacian operator instead. Countours gives a thicker boundary. Laplace is a single layer.
-        # fill_front_indices = cv2.Laplacian(thresh, -1, ksize=3)
-        # fill_front = np.column_stack(fill_front_indices)
-
         self.curr_fill_front = fill_front
 
         return fill_front
@@ -193,7 +178,6 @@ class ObjectRemover:
         x_1, y_1, x_2, y_2 = self._get_patch_coordinates(point)
         confidence = self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1].sum()
         patch_area = (x_2 - x_1 + 1) * (y_2 - y_1 + 1)
-        # return confidence / self.patch_area  # TODO: update patch area to use patch window size
         return confidence / patch_area
 
     def _calculate_data(self, point):
@@ -274,13 +258,7 @@ class ObjectRemover:
 
         p, q = self.window
         matched_patch = self.curr_image[loc[1]:loc[1] + p, loc[0]:loc[0] + q, :].copy()
-        # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1] = baz  # applying full matched template to patch.
-        # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1,:][mask_tmp==255] = baz  # applying full matched template to patch.
-        # baz[mask_tmp == 255] = 0 # black out mask area to see how patch is applied.
-        # self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][mask_tmp == 255] = baz[mask_tmp == 255] # applies pixel values to masked cells.
 
-
-        ############
         flag = True
         match_mask = self.curr_mask[loc[1]:loc[1] + p, loc[0]:loc[0] + q].copy()
         match_mask = match_mask.reshape(h, w, 1).repeat(3, axis=2)
@@ -289,7 +267,6 @@ class ObjectRemover:
         c = a & ~b  # ignore pixel values matched inside mask region.
         patch_region_applied = np.zeros_like(template_mask)
         patch_region_applied[c] = 255
-        # plt.imshow(patch_region_applied); plt.show()
         if np.any(c) and flag:
             self.curr_image[x_1:x_2 + 1, y_1:y_2 + 1][c] = matched_patch[c]  # applies pixel values to masked cells
             self.patch_region_filled = patch_region_applied[:, :, 0]
@@ -299,13 +276,12 @@ class ObjectRemover:
 
         ############
 
-        # TODO Debug: Show priority point in contour image.
+        # Debug: Show priority point in contour image.
         foo = self.contour_img.copy()
         x, y = self.priority_point
         foo[y, x, :] = (0, 255, 0)
-        # if not self.iteration % 10:
-        # self._debug_plot(foo)
-        # TODO: Debug show rectangle around match location
+
+        # Debug show rectangle around match location
         top_left = loc
         h, w = template.shape[:2]
         bottom_right = (top_left[0] + w, top_left[1] + h)
@@ -314,12 +290,7 @@ class ObjectRemover:
         cv2.rectangle(source_region, top_left, bottom_right, 255, 1)
 
         debug_out = np.hstack((foo, source_region, self.curr_image))
-        # if not self.iteration % 20:
-        # plt.imshow(cv2.cvtColor(img_tmp, cv2.COLOR_BGR2RGB))
-        # plt.show()
-        # plt.imshow(cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
-        # plt.show()
-        # cv2.imshow("patched_image", cv2.cvtColor(self.curr_image, cv2.COLOR_BGR2RGB))
+
         if VERBOSE:
             cv2.imshow("patched_image", debug_out)
             cv2.waitKey(0)
@@ -327,27 +298,23 @@ class ObjectRemover:
     def _update_confidence(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
         mask = self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1]
-        # self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][mask == 255] = self.priority_confidence
         self.curr_confidence[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = self.priority_confidence
 
     def _update_curr_mask(self):
         x_1, y_1, x_2, y_2 = self.priority_patch
-        # self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1] = 0
         self.curr_mask[x_1:x_2 + 1, y_1:y_2 + 1][self.patch_region_filled == 255] = 0
 
     def get_final_image(self):
         return self.curr_image
 
 
-window_map = {
-    1: (39, 39),
-    2: (29, 29),
-    3: (39, 39),
-    4: (9, 9),
+WINDOW_MAP = {
+    1: (9, 9),
+    2: (37, 37),
+    3: (13, 13),
     5: (9, 9),
-    6: (29, 29),
-    7: (29, 29),
 }
+
 
 def objectRemoval(image, mask, setnum=0, window=(9, 9)):
     """ ALL IMAGES SUPPLIED OR RETURNED ARE UINT8.
@@ -384,7 +351,7 @@ def objectRemoval(image, mask, setnum=0, window=(9, 9)):
         your image array is complete on return.
     """
     if setnum > 0:
-        window = window_map.get(setnum, (9, 9))
+        window = WINDOW_MAP.get(setnum, (9, 9))
     obj_remover = ObjectRemover(image, mask, window)
     obj_remover.run()
 

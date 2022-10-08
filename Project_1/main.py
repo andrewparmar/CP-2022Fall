@@ -62,10 +62,16 @@ if __name__ == "__main__":
             raise
 
     # TODO change this back to 3.
-    for i in range(5, 6):
-        # image names should be input_1, input_2, input_3
+    # for i in range(3, 4):
+    for i in [1, 2, 3, 5]:
+    # for i in [3]:
+        # image names should be input_1, input_2, input_3’
+        # for j in list(range(5,51,4))[::-1]:
+        # for j in [43, 47]:
+        # window = (j, j)
+        window = (9, 9)
         start = time.time()
-        print("\nProcessing file set", i)
+        print("\nProcessing file set", i, "with window", window)
         image_name = SOURCE_FOLDER + 'input_' + str(i) + '.jpg'
         mask_name = SOURCE_FOLDER + 'mask_' + str(i) + '.jpg'
 
