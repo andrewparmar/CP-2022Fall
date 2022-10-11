@@ -56,6 +56,9 @@ import numpy as np
 import scipy as sp
 import cv2
 
+# TODO: Remove this import
+from matplotlib import pyplot as plt
+
 
 # import numba      may be used, not required. (Uncomment and pip install to use)
 
@@ -67,10 +70,8 @@ def returnYourName():
     -------
     output : string formatted as follows: your official name in Gradescope
     """
-    # WRITE YOUR CODE HERE.
+    return "Andrew Samuel Parmar"
 
-    # End of code
-    raise NotImplementedError
 
 
 def linearWeight(pixel_value):
@@ -139,8 +140,22 @@ def sampleIntensities(images):
                     j is the place of the image in images
                     Zj is the intensity of image Ij from the image stack at location (r, c)
     """
-    # TODO WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    num_intensities = 256
+    intensity_values = np.zeros((num_intensities, len(images)), dtype=np.uint8)
+    idx_mid_img = len(images) // 2
+    mid_img = images[idx_mid_img]
+
+    # i: Zi
+    for i in range(num_intensities):
+        if (mid_img == i).any():
+            locs = list(zip(*np.where(mid_img == i)))
+            idx = np.random.choice(len(locs), 1, replace=False)
+            r, c = locs[idx[0]]
+
+            for j, img in enumerate(images):
+                intensity_values[i, j] = img[r, c]
+
+    return intensity_values
 
 
 def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, weighting_function):
