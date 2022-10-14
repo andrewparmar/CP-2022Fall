@@ -94,8 +94,14 @@ def linearWeight(pixel_value):
         The weight corresponding to the input pixel intensity
 
     """
-    # WRITE YOUR CODE HERE.
-    raise NotImplementedError
+    Zmax = 255
+    Zmin = 0
+    z = pixel_value
+
+    if z <= (Zmin + Zmax) / 2:
+        return z - Zmin
+    else:
+        return Zmax - z
 
 
 def sampleIntensities(images):
@@ -232,7 +238,21 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #
     #   iii. Set mat_b at row k to Wij * log_exposure[j]
     #
-    # TODO WRITE YOUR CODE HERE
+
+    # Dev Notes:
+    # N: number of pixel locations
+    # P: number of photographs
+    k = 0
+    for i in range(num_samples):
+        for j in range(num_images):
+            Zij = intensity_samples[i, j]
+            Wij = weighting_function(Zij)
+            mat_A[k, Zij] = Wij
+            mat_A[k, num_samples + i] = -Wij
+            mat_b[k] = Wij * log_exposures[j]
+            k += 1
+
+    plt.imshow(mat_A); plt.show()
 
     # -------------------------------------------
     # 2. Add smoothing constraints (the N-2 rows after the data constraints).
@@ -257,14 +277,23 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #   should have a similar, though much larger, pattern.
     #   Find mat_A min & max. Use this info to setup your image.
     #
-    # TODO WRITE YOUR CODE HERE
+    Zmax= 255
+    Zmin = 0
+    for Zk in range(Zmin+1, Zmax):
+        Wk = weighting_function(Zk)
+        mat_A[k, Zk - 1] = Wk * smoothing_lambda
+        mat_A[k, Zk] = -2 * Wk * smoothing_lambda
+        mat_A[k, Zk + 1] = Wk * smoothing_lambda
+        k += 1
+
+    plt.imshow(mat_A); plt.show()
 
     # -------------------------------------------
     # 3. Add color curve centering constraint (the last row of mat_A):
     #       Set the value of mat_A in the last row and
     #       column (Zmax - Zmin) // 2 to the constant 1.
     #
-    # TODO WRITE YOUR CODE HERE
+    mat_A[k, (Zmax-Zmin) // 2] = 1
 
     # -------------------------------------------
     # 4. Solve the system Ax=b. Recall from linear algebra that the solution
@@ -284,7 +313,8 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #    ii. Multiply inv_A with mat_b (remember, use dot not *) to get x.
     #        If done correctly, x.shape should be 512 x 1
     #
-    # TODO WRITE YOUR CODE HERE
+    mat_A_inv = np.linalg.pinv(mat_A)
+    x = np.dot(mat_A_inv, mat_b)
 
     # -------------------------------------------
     # Assuming that you set up your equation so that the first elements of
