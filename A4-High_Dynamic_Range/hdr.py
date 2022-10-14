@@ -99,9 +99,9 @@ def linearWeight(pixel_value):
     z = pixel_value
 
     if z <= (Zmin + Zmax) / 2:
-        return z - Zmin
+        return np.float64(z - Zmin)
     else:
-        return Zmax - z
+        return np.float64(Zmax - z)
 
 
 def sampleIntensities(images):
@@ -252,7 +252,7 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
             mat_b[k] = Wij * log_exposures[j]
             k += 1
 
-    plt.imshow(mat_A); plt.show()
+    # plt.imshow(mat_A); plt.show()
 
     # -------------------------------------------
     # 2. Add smoothing constraints (the N-2 rows after the data constraints).
@@ -286,6 +286,8 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
         mat_A[k, Zk + 1] = Wk * smoothing_lambda
         k += 1
 
+
+    # TODO investigate this further.
     plt.imshow(mat_A); plt.show()
 
     # -------------------------------------------
@@ -325,8 +327,6 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     g = x[0:intensity_range + 1]
     # return response curve
     return g[:, 0]
-    raise NotImplementedError
-
 
 def computeRadianceMap(images, log_exposure_times, response_curve, weighting_function):
     """ Calculate a radiance map for each pixel from the response curve.
@@ -372,8 +372,29 @@ def computeRadianceMap(images, log_exposure_times, response_curve, weighting_fun
     #        just the middle image, rather than the average of the stack)
     #
     # 2. Return the radiance map
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
+
+    rad_map = np.zeros_like(images[0], dtype=np.float64)
+    h, w = rad_map.shape
+    mid_idx = len(images) // 2
+
+    q = 0
+    for i in range(h):
+        for j in range(w):
+            intensities = [img[i,j] for img in images]
+            weights = [weighting_function(val) for val in intensities]
+            sum_w = sum(weights)
+
+            if sum_w > 0:
+                weighted_radiance = 0
+                for idx, intensity in enumerate(intensities):
+                    weighted_radiance += weights[idx] * (response_curve[intensity] - log_exposure_times[idx])
+                rad_map[i, j] = weighted_radiance / sum_w
+            else:
+                intensity = intensities[mid_idx]
+                rad_map[i, j] = (response_curve[intensity] - log_exposure_times[mid_idx])
+
+    return rad_map
+
 
 
 def computeHistogram(image):
