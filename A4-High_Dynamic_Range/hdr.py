@@ -73,7 +73,6 @@ def returnYourName():
     return "Andrew Samuel Parmar"
 
 
-
 def linearWeight(pixel_value):
     """ Linear weighting function based on pixel intensity that reduces the
     weight of pixel values that are near saturation.
@@ -277,15 +276,14 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #   should have a similar, though much larger, pattern.
     #   Find mat_A min & max. Use this info to setup your image.
     #
-    Zmax= 255
+    Zmax = 255
     Zmin = 0
-    for Zk in range(Zmin+1, Zmax):
+    for Zk in range(Zmin + 1, Zmax):
         Wk = weighting_function(Zk)
         mat_A[k, Zk - 1] = Wk * smoothing_lambda
         mat_A[k, Zk] = -2 * Wk * smoothing_lambda
         mat_A[k, Zk + 1] = Wk * smoothing_lambda
         k += 1
-
 
     # TODO investigate this further.
     # plt.imshow(mat_A, cmap='gray'); plt.show()
@@ -295,7 +293,7 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #       Set the value of mat_A in the last row and
     #       column (Zmax - Zmin) // 2 to the constant 1.
     #
-    mat_A[k, (Zmax-Zmin) // 2] = 1
+    mat_A[k, (Zmax - Zmin) // 2] = 1
 
     # -------------------------------------------
     # 4. Solve the system Ax=b. Recall from linear algebra that the solution
@@ -381,7 +379,7 @@ def computeRadianceMap(images, log_exposure_times, response_curve, weighting_fun
     q = 0
     for i in range(h):
         for j in range(w):
-            intensities = [img[i,j] for img in images]
+            intensities = [img[i, j] for img in images]
             weights = [weighting_function(val) for val in intensities]
             sum_w = sum(weights)
 
@@ -420,7 +418,7 @@ def computeHistogram(image):
     #       of all pixels with that V value.
     #
     img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    img_value_channel = img_hsv[:,:,2]
+    img_value_channel = img_hsv[:, :, 2]
     rows, cols = img_value_channel.shape
 
     histogram = np.zeros((256, 1), dtype=np.uint64)
@@ -459,7 +457,7 @@ def computeCumulativeDensity(histogram):
     #           cumulative_density[x] = histogram[x] + cumulative_density[x-1]
     #       where x is the current bin value.
     cumulative_density = np.zeros_like(histogram)
-    cumulative_density[:,0] = np.cumsum(histogram)
+    cumulative_density[:, 0] = np.cumsum(histogram)
     return cumulative_density
 
 
