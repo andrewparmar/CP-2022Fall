@@ -288,7 +288,7 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
 
 
     # TODO investigate this further.
-    plt.imshow(mat_A); plt.show()
+    # plt.imshow(mat_A, cmap='gray'); plt.show()
 
     # -------------------------------------------
     # 3. Add color curve centering constraint (the last row of mat_A):
@@ -327,6 +327,7 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     g = x[0:intensity_range + 1]
     # return response curve
     return g[:, 0]
+
 
 def computeRadianceMap(images, log_exposure_times, response_curve, weighting_function):
     """ Calculate a radiance map for each pixel from the response curve.
@@ -396,7 +397,6 @@ def computeRadianceMap(images, log_exposure_times, response_curve, weighting_fun
     return rad_map
 
 
-
 def computeHistogram(image):
     """ Calculate a histogram for each image.
     You must write this code yourself, you cannot use histogram functions.
@@ -419,8 +419,20 @@ def computeHistogram(image):
     #       construct an array where each entry in the array is a count
     #       of all pixels with that V value.
     #
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
+    img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    img_value_channel = img_hsv[:,:,2]
+    rows, cols = img_value_channel.shape
+
+    histogram = np.zeros((256, 1), dtype=np.uint64)
+
+    for i in range(rows):
+        for j in range(cols):
+            val = img_value_channel[i, j]
+            histogram[val] += 1
+
+    # plt.bar(list(range(0, 256)), histogram[:, 0], title='image histogram')
+
+    return histogram
 
 
 def computeCumulativeDensity(histogram):
@@ -446,8 +458,9 @@ def computeCumulativeDensity(histogram):
     #       This can be thought of as:
     #           cumulative_density[x] = histogram[x] + cumulative_density[x-1]
     #       where x is the current bin value.
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
+    cumulative_density = np.zeros_like(histogram)
+    cumulative_density[:,0] = np.cumsum(histogram)
+    return cumulative_density
 
 
 def applyHistogramEqualization(image, cumulative_density):
@@ -481,8 +494,19 @@ def applyHistogramEqualization(image, cumulative_density):
     # 4. Convert the HSV image with the altered V channel back into
     #       BGR colorspace and return.
 
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
+    scale_factor = 255.0 / cumulative_density.max()
+    ncdf = np.round(scale_factor * cumulative_density)
+
+    img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    rows, cols = image.shape[:2]
+    for i in range(rows):
+        for j in range(cols):
+            val = img_hsv[i, j, 2]
+            img_hsv[i, j, 2] = ncdf[val]
+
+    hist_eq_img_hsv = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
+    return hist_eq_img_hsv
 
 
 def bestHDR(image):
