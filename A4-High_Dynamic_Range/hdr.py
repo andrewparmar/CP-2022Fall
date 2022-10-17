@@ -57,8 +57,8 @@ import scipy as sp
 import cv2
 
 # TODO: Remove this import
-from matplotlib import pyplot as plt
-
+# from matplotlib import pyplot as plt
+# import os
 
 # import numba      may be used, not required. (Uncomment and pip install to use)
 
@@ -295,6 +295,10 @@ def computeResponseCurve(intensity_samples, log_exposures, smoothing_lambda, wei
     #
     mat_A[k, (Zmax - Zmin) // 2] = 1
 
+    # tmp_mat_A = np.zeros_like(mat_A)
+    # tmp_mat_A[mat_A != 0] = 255
+    # cv2.imwrite("mat_A_output.png", tmp_mat_A)
+
     # -------------------------------------------
     # 4. Solve the system Ax=b. Recall from linear algebra that the solution
     # to a linear system can be obtained:
@@ -456,9 +460,8 @@ def computeCumulativeDensity(histogram):
     #       This can be thought of as:
     #           cumulative_density[x] = histogram[x] + cumulative_density[x-1]
     #       where x is the current bin value.
-    cumulative_density = np.zeros_like(histogram)
-    cumulative_density[:, 0] = np.cumsum(histogram)
-    return cumulative_density
+    cumulative_density = np.cumsum(histogram, dtype=np.uint64)
+    return cumulative_density.reshape((256, 1))
 
 
 def applyHistogramEqualization(image, cumulative_density):
@@ -530,9 +533,50 @@ def bestHDR(image):
     numpy.ndarray
         A numpy array of dimensions (HxWx3) and type np.uint8 that is your bestHDR.
     """
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
 
+    pdf = computeHistogram(image.astype(np.uint8)) / (image.size / 3)
+    # pdf = computeHistogram(image.astype(np.uint8))
+    pdf_wt = np.zeros_like(pdf)
+
+    # for r in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:
+    #     for v in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+    r = 0.1
+    v = 0.3
+    p_lower = 0.0003
+    p_upper = v * pdf.max()
+
+    for i, p in enumerate(pdf[:, 0]):
+        if p > p_upper:
+            x = p_upper
+        elif p < p_lower:
+            x = 0
+        else:
+            x = ((p - p_lower) / (p_upper - p_lower)) ** r * p_upper
+        pdf_wt[i, 0] = x
+
+    C_wt = computeCumulativeDensity(pdf_wt)
+    W_out = 255
+    M_adj = 0
+
+    img_hsv = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_BGR2HSV)
+    img_wthe = img_hsv.copy()
+
+    rows, cols = image.shape[:2]
+    for i in range(rows):
+        for j in range(cols):
+            p = img_hsv[i, j, 2]
+            img_wthe[i, j, 2] = W_out * C_wt[p] + M_adj
+
+    img_wthe_bgr = cv2.cvtColor(img_wthe, cv2.COLOR_HSV2BGR)
+    # filename = f"./test_imgs/r_{r}_v_{v}_w_out_{W_out}_m_adj_{M_adj}.png"
+    # cv2.imwrite(filename, img_wthe_bgr)
+
+    # img_wthe_rgb = cv2.cvtColor(img_wthe_bgr, cv2.COLOR_BGR2RGB)
+    # plt.imshow(img_wthe_rgb)
+    # plt.title(f"r:{r}, v:{v}, w_out:{W_out}, m_adj:{M_adj}")
+    # plt.show()
+
+    return img_wthe_bgr
 
 def colorspaceEnhancement(image):
     """ Implement your colorspace adjustments.
@@ -557,5 +601,4 @@ def colorspaceEnhancement(image):
     numpy.ndarray
         A numpy array of dimensions (HxWx3) and type np.uint8 that is your color enhanced bestHDR.
     """
-    # TODO WRITE YOUR CODE HERE
-    raise NotImplementedError
+    # TODO WRITE YOUR CODE HERE    raise NotImplementedError
