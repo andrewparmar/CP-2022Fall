@@ -495,19 +495,20 @@ def applyHistogramEqualization(image, cumulative_density):
     # 4. Convert the HSV image with the altered V channel back into
     #       BGR colorspace and return.
 
-    scale_factor = 255.0 / cumulative_density.max()
-    ncdf = np.round(scale_factor * cumulative_density)
+    ncdf = cv2.normalize(cumulative_density, None, 0, 255, cv2.NORM_MINMAX)
+    ncdf = np.round(ncdf)
 
     img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    img_hsv_cp = img_hsv.copy()
 
     rows, cols = image.shape[:2]
     for i in range(rows):
         for j in range(cols):
             val = img_hsv[i, j, 2]
-            img_hsv[i, j, 2] = ncdf[val]
+            img_hsv_cp[i, j, 2] = ncdf[val]
 
-    hist_eq_img_hsv = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
-    return hist_eq_img_hsv
+    hist_eq_img_bgr = cv2.cvtColor(img_hsv_cp, cv2.COLOR_HSV2BGR)
+    return hist_eq_img_bgr
 
 
 def bestHDR(image):
@@ -602,3 +603,4 @@ def colorspaceEnhancement(image):
         A numpy array of dimensions (HxWx3) and type np.uint8 that is your color enhanced bestHDR.
     """
     # TODO WRITE YOUR CODE HERE    raise NotImplementedError
+    return image
