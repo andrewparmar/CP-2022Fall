@@ -459,9 +459,6 @@ def computeCumulativeDensity(histogram):
     #       This can be thought of as:
     #           cumulative_density[x] = histogram[x] + cumulative_density[x-1]
     #       where x is the current bin value.
-    # cumulative_density = np.cumsum(histogram, dtype=np.uint64)
-    # return cumulative_density.reshape((256, 1))
-
     cumulative_density = np.zeros_like(histogram)
     cumulative_density[0, 0] = histogram[0, 0]
 
@@ -543,11 +540,8 @@ def bestHDR(image):
     """
 
     pdf = computeHistogram(image.astype(np.uint8)) / (image.size / 3)
-    # pdf = computeHistogram(image.astype(np.uint8))
     pdf_wt = np.zeros_like(pdf)
 
-    # for r in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]:
-    #     for v in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
     r = 0.1
     v = 0.4
     p_lower = 0.0003
@@ -613,17 +607,15 @@ def colorspaceEnhancement(image):
     numpy.ndarray
         A numpy array of dimensions (HxWx3) and type np.uint8 that is your color enhanced bestHDR.
     """
-    # reinhard
-    # image = image.astype(np.float64) / (image + 1)
-    # return (image * 255).astype(np.uint8)
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    up_saturation = img[:, :, 1] * 2
+    img[:, :, 1] = up_saturation
+    # down_hue = img[:, :, 0] * 0.5
+    # img[:, :, 0] = down_hue
+    image = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+    # return image.astype(np.uint8)
 
     # trying a simple gamma correction
     gamma = 1.3
     res = np.power(image.astype(np.float64)/255, 1/gamma) * 255
     return res.astype(np.uint8)
-
-    # gamma = 2
-    # invGamma = 1.0 / gamma
-    # table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-    # # apply gamma correction using the lookup table
-    # return cv2.LUT(image, table)
