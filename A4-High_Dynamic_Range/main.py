@@ -26,8 +26,11 @@ import hdr as hdr
 # variation in the output even for the sample exposure stack
 
 SRC_FOLDER = "images/source/sample"
-EXPOSURE_TIMES = np.float64([1/160.0, 1/125.0, 1/80.0,
-                             1/60.0, 1/40.0, 1/15.0])
+EXPOSURE_TIMES = np.float64([1/160.0, 1/125.0, 1/80.0, 1/60.0, 1/40.0, 1/15.0])
+
+SRC_FOLDER = "images/source/bamboo_forest"
+EXPOSURE_TIMES = np.float64([1/25, 1/13, 1/6, 3/5, 1.3, 2.5])
+
 OUT_FOLDER = "images/output"
 EXTENSIONS = set(["bmp", "jpg", "jpeg", "png", "tif", "tiff"])
 
@@ -244,7 +247,7 @@ if __name__ == "__main__":
         in the SRC_FOLDER directory
     """
 
-    np.random.seed()  # set a fixed seed if you want repeatable results
+    np.random.seed(42)  # set a fixed seed if you want repeatable results
 
     src_contents = os.walk(SRC_FOLDER)
     dirpath, _, fnames = next(src_contents)
@@ -268,9 +271,9 @@ if __name__ == "__main__":
     main(image_files,
          output_dir,
          EXPOSURE_TIMES,
-         resize=False,
+         resize=True,
          align=False,
          rad_plot=False,
-         histo_plot=False)
+         histo_plot=True)
     
 
