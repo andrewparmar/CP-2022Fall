@@ -104,7 +104,22 @@ def computeSimilarityMetric(video_volume):
         score between the start frame at i and the end frame at j of the
         video_volume.  This matrix is symmetrical with a diagonal of zeros.
     """
-    raise NotImplementedError
+    num_images = video_volume.shape[0]
+    similarity = np.zeros((num_images, num_images))
+    for i in range(num_images-1):
+        for j in range(i+1, num_images):
+            start = video_volume[i]
+            end = video_volume[j]
+            rssd = np.sum((start-end)**2)**0.5
+            similarity[i, j] = rssd
+            similarity[j, i] = rssd
+
+    similarity = similarity / similarity.mean()
+
+    norm_image = cv2.normalize(similarity, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    plt.imshow(norm_image); plt.show()
+
+    return similarity
 
 
 def transitionDifference(similarity):
