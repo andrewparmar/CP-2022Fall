@@ -1,12 +1,10 @@
 import errno
 import os
 import sys
-
-import numpy as np
-import cv2
-
 from glob import glob
 
+import cv2
+import numpy as np
 import textures
 
 
@@ -33,10 +31,12 @@ def runTexture(img_list, alpha):
         for j in range(transition_diff.shape[1]):
             diff3[i, j] = alpha * (j - i) - transition_diff[j, i]
 
-    return (vizDifference(ssd_diff),
-            vizDifference(transition_diff),
-            vizDifference(diff3),
-            textures.synthesizeLoop(video_volume, idxs[0], idxs[1]))
+    return (
+        vizDifference(ssd_diff),
+        vizDifference(transition_diff),
+        vizDifference(diff3),
+        textures.synthesizeLoop(video_volume, idxs[0], idxs[1]),
+    )
 
 
 def readImages(image_dir):
@@ -57,18 +57,33 @@ def readImages(image_dir):
             numpy.ndarray.
 
     """
-    extensions = ['bmp', 'pbm', 'pgm', 'ppm', 'sr', 'ras', 'jpeg',
-                  'jpg', 'jpe', 'jp2', 'tiff', 'tif', 'png']
+    extensions = [
+        "bmp",
+        "pbm",
+        "pgm",
+        "ppm",
+        "sr",
+        "ras",
+        "jpeg",
+        "jpg",
+        "jpe",
+        "jp2",
+        "tiff",
+        "tif",
+        "png",
+    ]
 
-    search_paths = [os.path.join(image_dir, '*.' + ext) for ext in extensions]
+    search_paths = [os.path.join(image_dir, "*." + ext) for ext in extensions]
     image_files = sorted(sum(map(glob, search_paths), []))
-    images = [cv2.imread(f, cv2.IMREAD_UNCHANGED | cv2.IMREAD_COLOR) for f in image_files]
+    images = [
+        cv2.imread(f, cv2.IMREAD_UNCHANGED | cv2.IMREAD_COLOR) for f in image_files
+    ]
 
     bad_read = any([img is None for img in images])
     if bad_read:
         raise RuntimeError(
-            "Reading one or more files in {} failed - aborting."
-            .format(image_dir))
+            "Reading one or more files in {} failed - aborting.".format(image_dir)
+        )
 
     return images
 
@@ -82,11 +97,13 @@ if __name__ == "__main__":
     try:
         alpha = float(sys.argv[1])
     except (IndexError, ValueError):
-        print("The required positional argument alpha was missing or " +
-              "incompatible. You must specify a floating point value for " +
-              "alpha.  Example usage:\n\n    python main.py 0.5\n")
+        print(
+            "The required positional argument alpha was missing or "
+            + "incompatible. You must specify a floating point value for "
+            + "alpha.  Example usage:\n\n    python main.py 0.5\n"
+        )
         exit(1)
-        
+
     # After testing on the candle images, change video_dir
     # to point to directory containing your original images.
     video_dir = "candle"
@@ -95,8 +112,9 @@ if __name__ == "__main__":
 
     try:
         _out_dir = os.path.join(out_dir, video_dir)
-        not_empty = not all([os.path.isdir(x) for x in
-                             glob(os.path.join(_out_dir, "*.*"))])
+        not_empty = not all(
+            [os.path.isdir(x) for x in glob(os.path.join(_out_dir, "*.*"))]
+        )
         if not_empty:
             raise RuntimeError("Output directory is not empty - aborting.")
         os.makedirs(_out_dir)
@@ -110,10 +128,11 @@ if __name__ == "__main__":
     print("Computing video texture with alpha = {}".format(alpha))
     diff1, diff2, diff3, out_list = runTexture(images, alpha)
 
-    cv2.imwrite(os.path.join(out_dir, '{}_diff1.png'.format(video_dir)), diff1)
-    cv2.imwrite(os.path.join(out_dir, '{}_diff2.png'.format(video_dir)), diff2)
-    cv2.imwrite(os.path.join(out_dir, '{}_diff3.png'.format(video_dir)), diff3)
+    cv2.imwrite(os.path.join(out_dir, "{}_diff1.png".format(video_dir)), diff1)
+    cv2.imwrite(os.path.join(out_dir, "{}_diff2.png".format(video_dir)), diff2)
+    cv2.imwrite(os.path.join(out_dir, "{}_diff3.png".format(video_dir)), diff3)
 
     for idx, image in enumerate(out_list):
-        cv2.imwrite(os.path.join(out_dir, video_dir,
-                    'frame{0:04d}.png'.format(idx)), image)
+        cv2.imwrite(
+            os.path.join(out_dir, video_dir, "frame{0:04d}.png".format(idx)), image
+        )

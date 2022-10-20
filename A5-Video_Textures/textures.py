@@ -24,30 +24,26 @@ GENERAL RULES:
     areas annotated for student code do not impact your performance on the
     autograder system.
 """
+import cv2
 import numpy as np
 import scipy as sp
-import cv2
 import scipy.signal
 
 
 def returnYourName():
-    """ When it is called, this function should return your official name as
-    shown on your Gradescope Account. If you are not sure what name to use, 
-    when you submit this file to Gradescope, the autograder will print an 
+    """When it is called, this function should return your official name as
+    shown on your Gradescope Account. If you are not sure what name to use,
+    when you submit this file to Gradescope, the autograder will print an
     error message with your name.
     Returns
     -------
     output : string formatted as follows: your official name in Gradescope
     """
-    # WRITE YOUR CODE HERE.
-    
-    
-    # End of code
-    raise NotImplementedError
+    return "Andrew Samuel Parmar"
 
-    
+
 def videoVolume(images):
-    """ Create a video volume (4-d numpy array) from the image list.
+    """Create a video volume (4-d numpy array) from the image list.
 
     Parameters
     ----------
@@ -206,4 +202,4 @@ def binomialFilter5():
     numpy.ndarray(dtype: np.float)
         A 5x1 numpy array representing a binomial filter.
     """
-    return np.array([1 / 16., 1 / 4., 3 / 8., 1 / 4., 1 / 16.], dtype=float)
+    return np.array([1 / 16.0, 1 / 4.0, 3 / 8.0, 1 / 4.0, 1 / 16.0], dtype=float)
