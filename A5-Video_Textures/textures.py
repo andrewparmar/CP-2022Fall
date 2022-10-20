@@ -28,6 +28,7 @@ import cv2
 import numpy as np
 import scipy as sp
 import scipy.signal
+import matplotlib.pyplot as plt
 
 
 def returnYourName():
@@ -58,7 +59,12 @@ def videoVolume(images):
         A 4D numpy array. This array should have dimensions
         (num_frames, rows, cols, 3).
     """
-    raise NotImplementedError
+    rows, cols = images[0].shape[:2]
+    video_volume = np.zeros((len(images), rows, cols, 3), dtype=np.uint8)
+    for i, img in enumerate(images):
+        video_volume[i, :, :, :] = img
+
+    return video_volume
 
 
 def computeSimilarityMetric(video_volume):
