@@ -28,7 +28,7 @@ import cv2
 import numpy as np
 import scipy as sp
 import scipy.signal
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def returnYourName():
@@ -105,19 +105,19 @@ def computeSimilarityMetric(video_volume):
         video_volume.  This matrix is symmetrical with a diagonal of zeros.
     """
     num_images = video_volume.shape[0]
-    similarity = np.zeros((num_images, num_images))
+    similarity = np.zeros((num_images, num_images), dtype=np.float64)
     for i in range(num_images-1):
         for j in range(i+1, num_images):
-            start = video_volume[i]
-            end = video_volume[j]
-            rssd = np.sum((start-end)**2)**0.5
+            start = video_volume[i].astype(np.float64)
+            end = video_volume[j].astype(np.float64)
+            rssd = np.sum((start-end)**2, dtype=np.float64)**0.5
             similarity[i, j] = rssd
             similarity[j, i] = rssd
 
     similarity = similarity / similarity.mean()
 
-    norm_image = cv2.normalize(similarity, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    plt.imshow(norm_image); plt.show()
+    # norm_image = cv2.normalize(similarity, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_64F)
+    # plt.imshow(norm_image); plt.show()
 
     return similarity
 
@@ -148,7 +148,10 @@ def transitionDifference(similarity):
         the input, but be 4 rows and columns smaller, corresponding to only
         the frames that have valid dynamics.
     """
-    raise NotImplementedError
+    kernel = binomialFilter5()
+    diag_kernel = np.diag(kernel)
+    transition_diff = cv2.filter2D(similarity, -1, diag_kernel)
+    return transition_diff[2:-2, 2:-2]
 
 
 def findBiggestLoop(transition_diff, alpha):
@@ -186,7 +189,17 @@ def findBiggestLoop(transition_diff, alpha):
         The pair of (start, end) indices of the longest loop after correcting
         for the rows and columns lost due to the binomial filter.
     """
-    raise NotImplementedError
+    max_idx = None
+    score = -np.inf
+    rows, cols = transition_diff.shape
+    for i in range(rows):
+        for j in range(cols):
+            tmp_score = alpha * (j - i) - transition_diff[i, j]
+            if tmp_score > score:
+                score = tmp_score
+                max_idx = (i, j)
+
+    return max_idx
 
 
 def synthesizeLoop(video_volume, start, end):
