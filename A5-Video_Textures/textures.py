@@ -197,7 +197,7 @@ def findBiggestLoop(transition_diff, alpha):
             tmp_score = alpha * (j - i) - transition_diff[i, j]
             if tmp_score > score:
                 score = tmp_score
-                max_idx = (i, j)
+                max_idx = (i+2, j+2)
 
     return max_idx
 
@@ -223,7 +223,10 @@ def synthesizeLoop(video_volume, start, end):
         A list of arrays of size (height, width, 3) and dtype np.uint8,
         similar to the original input to the videoVolume function.
     """
-    return video_volume[start:end, :, :, :]
+    res = []
+    for i in range(start, end + 1):
+        res.append(video_volume[i, :, :, :])
+    return res
 
 
 def binomialFilter5():
