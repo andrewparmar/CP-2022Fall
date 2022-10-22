@@ -223,7 +223,7 @@ def synthesizeLoop(video_volume, start, end):
         A list of arrays of size (height, width, 3) and dtype np.uint8,
         similar to the original input to the videoVolume function.
     """
-    raise NotImplementedError
+    return video_volume[start:end, :, :, :]
 
 
 def binomialFilter5():
