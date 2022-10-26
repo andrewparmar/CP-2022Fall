@@ -59,6 +59,7 @@ def videoVolume(images):
         A 4D numpy array. This array should have dimensions
         (num_frames, rows, cols, 3).
     """
+    print("Creating videoVolume.")
     rows, cols = images[0].shape[:2]
     video_volume = np.zeros((len(images), rows, cols, 3), dtype=np.uint8)
     for i, img in enumerate(images):
@@ -104,8 +105,10 @@ def computeSimilarityMetric(video_volume):
         score between the start frame at i and the end frame at j of the
         video_volume.  This matrix is symmetrical with a diagonal of zeros.
     """
+    print("Computing similarity metric.")
     num_images = video_volume.shape[0]
     similarity = np.zeros((num_images, num_images), dtype=np.float64)
+    counter = 0
     for i in range(num_images-1):
         for j in range(i+1, num_images):
             start = video_volume[i].astype(np.float64)
@@ -113,6 +116,9 @@ def computeSimilarityMetric(video_volume):
             rssd = np.sum((start-end)**2, dtype=np.float64)**0.5
             similarity[i, j] = rssd
             similarity[j, i] = rssd
+            counter += 1
+            if not counter % 1000:
+                print(i, j, rssd)
 
     similarity = similarity / similarity.mean()
 
@@ -148,6 +154,7 @@ def transitionDifference(similarity):
         the input, but be 4 rows and columns smaller, corresponding to only
         the frames that have valid dynamics.
     """
+    print("Computing transition difference.")
     kernel = binomialFilter5()
     diag_kernel = np.diag(kernel)
     transition_diff = cv2.filter2D(similarity, -1, diag_kernel)
@@ -189,13 +196,14 @@ def findBiggestLoop(transition_diff, alpha):
         The pair of (start, end) indices of the longest loop after correcting
         for the rows and columns lost due to the binomial filter.
     """
+    print("Finding biggest loop.")
     max_idx = None
     score = -np.inf
     rows, cols = transition_diff.shape
     for i in range(rows):
         for j in range(cols):
             tmp_score = alpha * (j - i) - transition_diff[i, j]
-            if tmp_score > score:
+            if tmp_score >= score:
                 score = tmp_score
                 max_idx = (i+2, j+2)
 
@@ -223,6 +231,7 @@ def synthesizeLoop(video_volume, start, end):
         A list of arrays of size (height, width, 3) and dtype np.uint8,
         similar to the original input to the videoVolume function.
     """
+    print("Synthesizing loop.")
     res = []
     for i in range(start, end + 1):
         res.append(video_volume[i, :, :, :])
