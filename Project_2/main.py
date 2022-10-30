@@ -7,8 +7,8 @@ to use this file, and ARE ALLOWED to make ANY changes you want in
 THIS file. This file will not be submitted with your assignment
 or report.
 
-If your travel-level laptop can run this file and produce 
-all of the outputs without errors within the 2 hour time limit, 
+If your travel-level laptop can run this file and produce
+all of the outputs without errors within the 2 hour time limit,
 then your code should be fast enough. For those wishing a speedier
 run, this can be completed in under 5 minutes on that same laptop.
 
@@ -18,7 +18,7 @@ import cv2
 
 import os
 import errno
-import time     # you may add section timing 
+import time     # you may add section timing
 
 
 from seam_carving import (beach_back_removal,
@@ -56,7 +56,7 @@ def generate_result_images(beach, dolphin, bench, car):
         result = beach_back_removal(beach, seams=300)
         cv2.imwrite("images/results/res_beach_back_rem.png", result)
     except: print('Error generating res_beach_back_rem ')
-      
+
     try:
         result = dolphin_back_insert(dolphin, seams=100, redSeams=False)
         cv2.imwrite("images/results/res_dolphin_back_ins.png", result)
@@ -104,7 +104,7 @@ def generate_result_images(beach, dolphin, bench, car):
 
     print('result images generated')
     return
-    
+
 def generate_differences():
     results = ["res_beach_back_rem.png",
                "res_dolphin_back_ins.png",
@@ -113,7 +113,7 @@ def generate_differences():
                "res_bench_for_rem.png",
                "res_car_back_ins.png",
                "res_car_for_ins.png"]
-    
+
     comps  =  ["comp_beach_back_rem.png",
                "comp_dolphin_back_ins.png",
                "comp_dolphin_back_double.png",
@@ -121,7 +121,7 @@ def generate_differences():
                "comp_bench_for_rem.png",
                "comp_car_back_ins.png",
                "comp_car_for_ins.png"]
-    
+
     diffs  =  ["diff_beach_back_rem.png",
                "diff_dolphin_back_ins.png",
                "diff_dolphin_back_double.png",
@@ -140,17 +140,17 @@ def generate_differences():
             cv2.imwrite("images/results/" + diffs[i], diff)
         except:
             print("Error in ", diffs[i])
-            
+
         # compute & print numerical comparison values
         try:
             num_comp = numerical_comparison(result, comp)
             print("numerical comp value(s): " + results[i] + "\n", num_comp)
         except:
             print("Error num_comp: ", results[i])
-            
+
     print('differences completed')
     return
-    
+
 
 if __name__ == "__main__":
     """ Generate the 10 result images, 7 diff images, and 7 numerical comparisons
@@ -165,11 +165,11 @@ if __name__ == "__main__":
             raise
 
     print("Processing files...")
-        
+
     beach, dolphin, bench, car = generate_base_arrays()
 
     generate_result_images(beach, dolphin, bench, car)
-    
+
     generate_differences()
 
 
