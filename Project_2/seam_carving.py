@@ -100,14 +100,93 @@ def returnYourName():
         your image array is complete on return.
 """
 
+
+class BaseSeamCarver:
+    pass
+
+
+class BackwardSeamCarver:
+    pass
+
+
+class ForwardSeamCarver:
+    pass
+
+
+def get_energy_map(image):
+    """
+    Parameters
+    ----------
+    image : numpy.ndarray (dtype=np.float64)
+
+    Returns
+    -------
+    gradient_array : numpy.ndarray (dtype=np.float64)
+    """
+    gradient_array = cv2.Laplacian(image, cv2.CV_64F)
+    return gradient_array
+
+
+def get_lowest_cumulative_energy(energy_map):
+    h, w = energy_map.shape
+    M = np.zeros((h, w+2))
+
+    # Set left and right cols to inf.
+    # Set top row to energy map top row
+    M[:, 0] = np.inf
+    M[:, -1] = np.inf
+    M[0, 1:-1] = energy_map[0, :]
+
+    for i in range(1, h):
+        for j in range(1, w+1):
+            M[i, j] = energy_map[i, j-1] + min(M[i-1, j-1], M[i-1, j], M[i-1, j+1])
+
+    # print("test")
+    # np.argmin(M[-1, :])
+    return M[:, 1:-1]
+
+
+def get_lowest_energy_seam(M):
+    h, w = M.shape
+    res = [(h-1, np.argmin(M[-1, :]))]
+    prev_j = np.argmin(M[-1, :])
+
+    for i in range(h-2, -1, -1):
+        min_val = np.inf
+        min_cell = None
+        for nc in [(prev_j-1), prev_j, (prev_j+1)]:
+            if 0 <= nc < w and M[i, nc] < min_val:
+                min_val = M[i, nc]
+                min_cell = (i, nc)
+        res.append(min_cell)
+        prev_j = min_cell[1]
+
+    res.reverse()
+    return res
+
+
+def plot_seam(image, seam_cells):
+    for i, j in seam_cells:
+        image[i, j, :] = (0, 0, 255)
+
+    img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    plt.imshow(img_rgb); plt.show()
+
+
 def beach_back_removal(image, seams=300, redSeams=False):
     """ Use the backward method of seam carving from the 2007 paper to remove
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    # WRITE YOUR CODE HERE.
+    scale_down = 0.1
+    image = cv2.resize(image, (0, 0), fx=scale_down, fy=scale_down, interpolation=cv2.INTER_AREA)
+    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray_img_f64 = gray_img.astype(np.float64)
+    energy_map = get_energy_map(gray_img_f64)
+    M = get_lowest_cumulative_energy(energy_map)
+    seam_cells = get_lowest_energy_seam(M)
 
-    raise NotImplementedError
+    plot_seam(image, seam_cells)
 
 
 def dolphin_back_insert(image, seams=100, redSeams=False):
