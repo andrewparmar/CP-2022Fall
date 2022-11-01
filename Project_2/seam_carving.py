@@ -71,9 +71,7 @@ FUNCTIONS:
 def returnYourName():
     """ This function returns your name as shown on your Gradescope Account.
     """
-    # WRITE YOUR CODE HERE.
-
-    raise NotImplementedError
+    return "Andrew Samuel Parmar"
 
 
 # -------------------------------------------------------------------
@@ -170,7 +168,25 @@ def plot_seam(image, seam_cells):
         image[i, j, :] = (0, 0, 255)
 
     img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    plt.imshow(img_rgb); plt.show()
+    # plt.imshow(img_rgb); plt.show()
+    # cv2.imshow("window", image)
+    # cv2.waitKey(1000)
+
+
+def remove_seam(image, seam_cells):
+    img_cp = image.copy()
+    for i, j in seam_cells:
+        image[i, j:-1, :] = image[i, j+1:, :]
+
+    image = image[:, :-1, :]
+
+    # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # plt.imshow(img_rgb); plt.show()
+    foo = np.hstack((img_cp, image))
+    cv2.imshow("window", foo)
+    cv2.waitKey(100)
+
+    return image
 
 
 def beach_back_removal(image, seams=300, redSeams=False):
@@ -178,15 +194,24 @@ def beach_back_removal(image, seams=300, redSeams=False):
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    scale_down = 0.1
-    image = cv2.resize(image, (0, 0), fx=scale_down, fy=scale_down, interpolation=cv2.INTER_AREA)
-    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray_img_f64 = gray_img.astype(np.float64)
-    energy_map = get_energy_map(gray_img_f64)
-    M = get_lowest_cumulative_energy(energy_map)
-    seam_cells = get_lowest_energy_seam(M)
+    # scale_down = 0.5
+    # image = cv2.resize(image, (0, 0), fx=scale_down, fy=scale_down, interpolation=cv2.INTER_AREA)
 
-    plot_seam(image, seam_cells)
+    for count in range(seams):
+        gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray_img_f64 = gray_img.astype(np.float64)
+        energy_map = get_energy_map(gray_img_f64)
+        M = get_lowest_cumulative_energy(energy_map)
+        seam_cells = get_lowest_energy_seam(M)
+
+        plot_seam(image, seam_cells)
+
+        image = remove_seam(image, seam_cells)
+        print(f"test1 {count}")
+
+    print("test")
+
+    return image
 
 
 def dolphin_back_insert(image, seams=100, redSeams=False):
