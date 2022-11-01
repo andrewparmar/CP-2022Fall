@@ -109,6 +109,7 @@ class BackwardSeamCarver:
         self.seam_count = seam_count
         self.working_image = image.copy()
         self.viz_delay = 10
+        self.seam_image = None
 
     def get_energy_map(self, image):
         """
@@ -160,10 +161,11 @@ class BackwardSeamCarver:
         return res
 
     def plot_seam(self, image, seam_cells):
+        self.seam_image = image.copy()
         for i, j in seam_cells:
-            image[i, j, :] = (0, 0, 255)
+            self.seam_image[i, j, :] = (0, 0, 255)
 
-        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # plt.imshow(img_rgb); plt.show()
         # cv2.imshow("window", image)
         # cv2.waitKey(1000)
@@ -184,7 +186,40 @@ class BackwardSeamCarver:
         return image
 
     def add_seam(self, image, seam_cells):
-        ...
+        img_cp = image.copy()
+        # new_img = image.copy()
+        h, w, d = image.shape
+        a = np.zeros((h, 1, d), dtype=image.dtype)
+        new_img = np.concatenate((image, a), axis=1)
+        for i, j in seam_cells:
+            # shift pixels in new_img to make room for new seam
+            # seam pixels are shifted to the right
+            new_img[i, j+1:, :] = image[i, j:, :]
+
+            # calculate avg of seam's neighboring pixels.
+            l = j - 1
+            r = j + 1
+            if l >= 0:
+                l_val = image[i, l, :]
+            else:
+                l_val = 0
+            if r < image.shape[1]:
+                r_val = image[i, r, :]
+            else:
+                r_val = 0
+            avg_vals = np.mean([l_val, r_val], axis=0)
+
+            new_img[i, j, :] = avg_vals
+
+        image = new_img
+
+        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # plt.imshow(img_rgb); plt.show()
+        foo = np.hstack((self.seam_image, image))
+        cv2.imshow("window", foo)
+        cv2.waitKey(self.viz_delay)
+
+        return image
 
     def run(self, extend=False, scaled=False):
         if scaled:
@@ -203,6 +238,8 @@ class BackwardSeamCarver:
 
             if not extend:
                 self.working_image = self.remove_seam(self.working_image, seam_cells)
+            else:
+                self.working_image = self.add_seam(self.working_image, seam_cells)
 
         return self.working_image
 
@@ -235,9 +272,10 @@ def dolphin_back_insert(image, seams=100, redSeams=False):
     This function is called twice:  dolphin_back_insert with redSeams = True
                                     dolphin_back_insert without redSeams = False
     """
-    # WRITE YOUR CODE HERE.
+    handler = BackwardSeamCarver(image, seams)
+    res = handler.run(extend=True)
 
-    raise NotImplementedError
+    return res
 
 
 def dolphin_back_double_insert(image, seams=100, redSeams=False):
