@@ -104,89 +104,114 @@ class BaseSeamCarver:
 
 
 class BackwardSeamCarver:
-    pass
+    def __init__(self, image, seam_count):
+        self.image = image.copy()
+        self.seam_count = seam_count
+        self.working_image = image.copy()
+        self.viz_delay = 10
+
+    def get_energy_map(self, image):
+        """
+        Parameters
+        ----------
+        image : numpy.ndarray (dtype=np.float64)
+
+        Returns
+        -------
+        gradient_array : numpy.ndarray (dtype=np.float64)
+        """
+        gradient_array = cv2.Laplacian(image, cv2.CV_64F)
+        return gradient_array
+
+    def get_lowest_cumulative_energy(self, energy_map):
+        h, w = energy_map.shape
+        M = np.zeros((h, w+2))
+
+        # Set left and right cols to inf.
+        # Set top row to energy map top row
+        M[:, 0] = np.inf
+        M[:, -1] = np.inf
+        M[0, 1:-1] = energy_map[0, :]
+
+        for i in range(1, h):
+            for j in range(1, w+1):
+                M[i, j] = energy_map[i, j-1] + min(M[i-1, j-1], M[i-1, j], M[i-1, j+1])
+
+        # print("test")
+        # np.argmin(M[-1, :])
+        return M[:, 1:-1]
+
+    def get_lowest_energy_seam(self, M):
+        h, w = M.shape
+        res = [(h - 1, np.argmin(M[-1, :]))]
+        prev_j = np.argmin(M[-1, :])
+
+        for i in range(h - 2, -1, -1):
+            min_val = np.inf
+            min_cell = None
+            for nc in [(prev_j - 1), prev_j, (prev_j + 1)]:
+                if 0 <= nc < w and M[i, nc] < min_val:
+                    min_val = M[i, nc]
+                    min_cell = (i, nc)
+            res.append(min_cell)
+            prev_j = min_cell[1]
+
+        res.reverse()
+        return res
+
+    def plot_seam(self, image, seam_cells):
+        for i, j in seam_cells:
+            image[i, j, :] = (0, 0, 255)
+
+        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # plt.imshow(img_rgb); plt.show()
+        # cv2.imshow("window", image)
+        # cv2.waitKey(1000)
+
+    def remove_seam(self, image, seam_cells):
+        img_cp = image.copy()
+        for i, j in seam_cells:
+            image[i, j:-1, :] = image[i, j + 1:, :]
+
+        image = image[:, :-1, :]
+
+        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # plt.imshow(img_rgb); plt.show()
+        foo = np.hstack((img_cp, image))
+        cv2.imshow("window", foo)
+        cv2.waitKey(self.viz_delay)
+
+        return image
+
+    def add_seam(self, image, seam_cells):
+        ...
+
+    def run(self, extend=False, scaled=False):
+        if scaled:
+            scale = 0.5
+            self.working_image = cv2.resize(self.image, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+
+        for count in range(self.seam_count):
+            print(f"Removing seam #{count}")
+            gray_img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY)
+            gray_img_f64 = gray_img.astype(np.float64)
+            energy_map = self.get_energy_map(gray_img_f64)
+            M = self.get_lowest_cumulative_energy(energy_map)
+            seam_cells = self.get_lowest_energy_seam(M)
+
+            self.plot_seam(self.working_image, seam_cells)
+
+            if not extend:
+                self.working_image = self.remove_seam(self.working_image, seam_cells)
+
+        return self.working_image
 
 
 class ForwardSeamCarver:
     pass
 
 
-def get_energy_map(image):
-    """
-    Parameters
-    ----------
-    image : numpy.ndarray (dtype=np.float64)
 
-    Returns
-    -------
-    gradient_array : numpy.ndarray (dtype=np.float64)
-    """
-    gradient_array = cv2.Laplacian(image, cv2.CV_64F)
-    return gradient_array
-
-
-def get_lowest_cumulative_energy(energy_map):
-    h, w = energy_map.shape
-    M = np.zeros((h, w+2))
-
-    # Set left and right cols to inf.
-    # Set top row to energy map top row
-    M[:, 0] = np.inf
-    M[:, -1] = np.inf
-    M[0, 1:-1] = energy_map[0, :]
-
-    for i in range(1, h):
-        for j in range(1, w+1):
-            M[i, j] = energy_map[i, j-1] + min(M[i-1, j-1], M[i-1, j], M[i-1, j+1])
-
-    # print("test")
-    # np.argmin(M[-1, :])
-    return M[:, 1:-1]
-
-
-def get_lowest_energy_seam(M):
-    h, w = M.shape
-    res = [(h-1, np.argmin(M[-1, :]))]
-    prev_j = np.argmin(M[-1, :])
-
-    for i in range(h-2, -1, -1):
-        min_val = np.inf
-        min_cell = None
-        for nc in [(prev_j-1), prev_j, (prev_j+1)]:
-            if 0 <= nc < w and M[i, nc] < min_val:
-                min_val = M[i, nc]
-                min_cell = (i, nc)
-        res.append(min_cell)
-        prev_j = min_cell[1]
-
-    res.reverse()
-    return res
-
-
-def plot_seam(image, seam_cells):
-    for i, j in seam_cells:
-        image[i, j, :] = (0, 0, 255)
-
-    img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # plt.imshow(img_rgb); plt.show()
-    # cv2.imshow("window", image)
-    # cv2.waitKey(1000)
-
-
-def remove_seam(image, seam_cells):
-    img_cp = image.copy()
-    for i, j in seam_cells:
-        image[i, j:-1, :] = image[i, j+1:, :]
-
-    image = image[:, :-1, :]
-
-    # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # plt.imshow(img_rgb); plt.show()
-    foo = np.hstack((img_cp, image))
-    cv2.imshow("window", foo)
-    cv2.waitKey(100)
-
-    return image
 
 
 def beach_back_removal(image, seams=300, redSeams=False):
@@ -197,21 +222,10 @@ def beach_back_removal(image, seams=300, redSeams=False):
     # scale_down = 0.5
     # image = cv2.resize(image, (0, 0), fx=scale_down, fy=scale_down, interpolation=cv2.INTER_AREA)
 
-    for count in range(seams):
-        gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray_img_f64 = gray_img.astype(np.float64)
-        energy_map = get_energy_map(gray_img_f64)
-        M = get_lowest_cumulative_energy(energy_map)
-        seam_cells = get_lowest_energy_seam(M)
+    handler = BackwardSeamCarver(image, seams)
+    res = handler.run()
 
-        plot_seam(image, seam_cells)
-
-        image = remove_seam(image, seam_cells)
-        print(f"test1 {count}")
-
-    print("test")
-
-    return image
+    return res
 
 
 def dolphin_back_insert(image, seams=100, redSeams=False):
