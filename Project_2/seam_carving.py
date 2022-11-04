@@ -108,7 +108,7 @@ class BackwardSeamCarver:
         self.image = image.copy()
         self.seam_count = seam_count
         self.working_image = image.copy()
-        self.viz_delay = 10
+        self.viz_delay = 100
         self.seam_image = None
 
     def get_energy_map(self, image):
@@ -121,8 +121,11 @@ class BackwardSeamCarver:
         -------
         gradient_array : numpy.ndarray (dtype=np.float64)
         """
-        gradient_array = cv2.Laplacian(image, cv2.CV_64F)
-        return gradient_array
+        gradient_b = cv2.Laplacian(image[:,:,0], cv2.CV_64F)
+        gradient_g = cv2.Laplacian(image[:,:,1], cv2.CV_64F)
+        gradient_r = cv2.Laplacian(image[:,:,2], cv2.CV_64F)
+        energy_map = gradient_b + gradient_g + gradient_r
+        return energy_map
 
     def get_lowest_cumulative_energy(self, energy_map):
         h, w = energy_map.shape
@@ -186,8 +189,6 @@ class BackwardSeamCarver:
         return image
 
     def add_seam(self, image, seam_cells):
-        img_cp = image.copy()
-        # new_img = image.copy()
         h, w, d = image.shape
         a = np.zeros((h, 1, d), dtype=image.dtype)
         new_img = np.concatenate((image, a), axis=1)
@@ -224,22 +225,31 @@ class BackwardSeamCarver:
     def run(self, extend=False, scaled=False):
         if scaled:
             scale = 0.5
-            self.working_image = cv2.resize(self.image, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            self.working_image = cv2.resize(
+                self.image, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA
+            )
+
+        working_img_copy = self.working_image.copy()
+
+        seam_list = []
 
         for count in range(self.seam_count):
             print(f"Removing seam #{count}")
-            gray_img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY)
-            gray_img_f64 = gray_img.astype(np.float64)
-            energy_map = self.get_energy_map(gray_img_f64)
+            # gray_img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY)
+            img_f64 = self.working_image.astype(np.float64)
+            energy_map = self.get_energy_map(img_f64)
             M = self.get_lowest_cumulative_energy(energy_map)
             seam_cells = self.get_lowest_energy_seam(M)
+            seam_list.append(seam_cells)
 
             self.plot_seam(self.working_image, seam_cells)
 
-            if not extend:
-                self.working_image = self.remove_seam(self.working_image, seam_cells)
-            else:
-                self.working_image = self.add_seam(self.working_image, seam_cells)
+            self.working_image = self.remove_seam(self.working_image, seam_cells)
+
+        if extend:
+            self.working_image = working_img_copy
+            for seam in seam_list:
+                self.working_image = self.add_seam(self.working_image, seam)
 
         return self.working_image
 
