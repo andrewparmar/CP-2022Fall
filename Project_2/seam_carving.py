@@ -7,6 +7,7 @@ import scipy.signal                     # option for a 2D convolution library
 from matplotlib import pyplot as plt    # for optional plots
 
 import copy
+import time
 
 """ Project 2: Seam Carving
 
@@ -107,9 +108,10 @@ class BackwardSeamCarver:
         self.image = image.copy()
         self.seam_count = seam_count
         self.working_image = image.copy()
-        self.viz_delay = 100
+        self.viz_delay = 10
         self.seam_image = None
 
+    # TODO: remove this function. The results were pretty bad.
     def get_energy_map(self, image):
         """
         Parameters
@@ -124,25 +126,30 @@ class BackwardSeamCarver:
         gradient_g = cv2.Laplacian(image[:, :, 1], cv2.CV_64F)
         gradient_r = cv2.Laplacian(image[:, :, 2], cv2.CV_64F)
         energy_map = gradient_b + gradient_g + gradient_r
+        cv2.imshow("energy", energy_map)
+        cv2.waitKey(self.viz_delay)
         return energy_map
+
+    # TODO: Change this to use Sobel.
+    def get_energy_map_scharr(self, image):
+        b, g, r = cv2.split(image)
+        b_energy = np.absolute(cv2.Scharr(b, -1, 1, 0)) + np.absolute(cv2.Scharr(b, -1, 0, 1))
+        g_energy = np.absolute(cv2.Scharr(g, -1, 1, 0)) + np.absolute(cv2.Scharr(g, -1, 0, 1))
+        r_energy = np.absolute(cv2.Scharr(r, -1, 1, 0)) + np.absolute(cv2.Scharr(r, -1, 0, 1))
+        return b_energy + g_energy + r_energy
 
     def get_lowest_cumulative_energy(self, energy_map):
         h, w = energy_map.shape
-        M = np.zeros((h, w + 2))
-
-        # Set left and right cols to inf.
+        M = np.zeros((h, w))
         # Set top row to energy map top row
-        M[:, 0] = np.inf
-        M[:, -1] = np.inf
-        M[0, 1:-1] = energy_map[0, :]
+        M[0, :] = energy_map[0, :]
 
         for i in range(1, h):
-            for j in range(1, w + 1):
-                M[i, j] = energy_map[i, j - 1] + min(M[i - 1, j - 1], M[i - 1, j], M[i - 1, j + 1])
+            for j in range(w):
+                M[i, j] = energy_map[i, j] + \
+                          min(M[i - 1, max(0, j - 1)], M[i - 1, j], M[i - 1, min(w-1, j + 1)])
 
-        # print("test")
-        # np.argmin(M[-1, :])
-        return M[:, 1:-1]
+        return M
 
     def get_lowest_energy_seam(self, M):
         h, w = M.shape
@@ -169,11 +176,11 @@ class BackwardSeamCarver:
 
         # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # plt.imshow(img_rgb); plt.show()
-        # cv2.imshow("window", image)
+        # cv2.imshow("window1", self.seam_image)
         # cv2.waitKey(1000)
 
     def remove_seam(self, image, seam_cells):
-        img_cp = image.copy()
+        # img_cp = image.copy()
         for i, j in seam_cells:
             image[i, j:-1, :] = image[i, j + 1:, :]
 
@@ -181,7 +188,7 @@ class BackwardSeamCarver:
 
         # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # plt.imshow(img_rgb); plt.show()
-        foo = np.hstack((img_cp, image))
+        foo = np.hstack((self.seam_image, image))
         cv2.imshow("window", foo)
         cv2.waitKey(self.viz_delay)
 
@@ -223,7 +230,7 @@ class BackwardSeamCarver:
 
     def run(self, extend=False, scaled=False):
         if scaled:
-            scale = 0.5
+            scale = 0.75
             self.working_image = cv2.resize(
                 self.image, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA
             )
@@ -233,17 +240,28 @@ class BackwardSeamCarver:
         seam_list = []
 
         for count in range(self.seam_count):
+            loop_start = time.time()
             print(f"Removing seam #{count}")
             # gray_img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY)
             img_f64 = self.working_image.astype(np.float64)
-            energy_map = self.get_energy_map(img_f64)
+            start = time.time()
+            energy_map = self.get_energy_map_scharr(img_f64)
+            print("energy_map", time.time() - start)
+
+            start = time.time()
             M = self.get_lowest_cumulative_energy(energy_map)
+            print("cumulative map", time.time() - start)
+
+            start = time.time()
             seam_cells = self.get_lowest_energy_seam(M)
+            print("get seam", time.time() - start)
             seam_list.append(seam_cells)
 
             self.plot_seam(self.working_image, seam_cells)
 
             self.working_image = self.remove_seam(self.working_image, seam_cells)
+
+            print("Loop time", time.time() - loop_start)
 
         if extend:
             self.working_image = working_img_copy
@@ -262,8 +280,8 @@ def beach_back_removal(image, seams=300, redSeams=False):
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    handler = BackwardSeamCarver(image, seams)
-    res = handler.run()
+    handler = BackwardSeamCarver(image, seam_count=seams)
+    res = handler.run(scaled=False)
 
     return res
 
