@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt    # for optional plots
 
 import copy
 
-
 """ Project 2: Seam Carving
 
 This file has a number of functions that you need to fill out in order to
@@ -121,15 +120,15 @@ class BackwardSeamCarver:
         -------
         gradient_array : numpy.ndarray (dtype=np.float64)
         """
-        gradient_b = cv2.Laplacian(image[:,:,0], cv2.CV_64F)
-        gradient_g = cv2.Laplacian(image[:,:,1], cv2.CV_64F)
-        gradient_r = cv2.Laplacian(image[:,:,2], cv2.CV_64F)
+        gradient_b = cv2.Laplacian(image[:, :, 0], cv2.CV_64F)
+        gradient_g = cv2.Laplacian(image[:, :, 1], cv2.CV_64F)
+        gradient_r = cv2.Laplacian(image[:, :, 2], cv2.CV_64F)
         energy_map = gradient_b + gradient_g + gradient_r
         return energy_map
 
     def get_lowest_cumulative_energy(self, energy_map):
         h, w = energy_map.shape
-        M = np.zeros((h, w+2))
+        M = np.zeros((h, w + 2))
 
         # Set left and right cols to inf.
         # Set top row to energy map top row
@@ -138,8 +137,8 @@ class BackwardSeamCarver:
         M[0, 1:-1] = energy_map[0, :]
 
         for i in range(1, h):
-            for j in range(1, w+1):
-                M[i, j] = energy_map[i, j-1] + min(M[i-1, j-1], M[i-1, j], M[i-1, j+1])
+            for j in range(1, w + 1):
+                M[i, j] = energy_map[i, j - 1] + min(M[i - 1, j - 1], M[i - 1, j], M[i - 1, j + 1])
 
         # print("test")
         # np.argmin(M[-1, :])
@@ -195,7 +194,7 @@ class BackwardSeamCarver:
         for i, j in seam_cells:
             # shift pixels in new_img to make room for new seam
             # seam pixels are shifted to the right
-            new_img[i, j+1:, :] = image[i, j:, :]
+            new_img[i, j + 1:, :] = image[i, j:, :]
 
             # calculate avg of seam's neighboring pixels.
             l = j - 1
@@ -258,17 +257,11 @@ class ForwardSeamCarver:
     pass
 
 
-
-
-
 def beach_back_removal(image, seams=300, redSeams=False):
     """ Use the backward method of seam carving from the 2007 paper to remove
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    # scale_down = 0.5
-    # image = cv2.resize(image, (0, 0), fx=scale_down, fy=scale_down, interpolation=cv2.INTER_AREA)
-
     handler = BackwardSeamCarver(image, seams)
     res = handler.run()
 
@@ -347,6 +340,7 @@ def car_for_insert(image, seams=170, redSeams=False):
     for a quantitative metric.
 """
 
+
 def difference_image(result_image, comparison_image):
     """ Take two images and produce a difference image that best visually
     indicates how and where the two images differ in pixel values.
@@ -408,7 +402,6 @@ def numerical_comparison(result_image, comparison_image):
     # WRITE YOUR CODE HERE.
 
     raise NotImplementedError
-
 
 
 if __name__ == "__main__":
