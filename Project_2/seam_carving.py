@@ -105,16 +105,16 @@ class BaseSeamCarver:
 
 class BackwardSeamCarver:
     def __init__(self, image, seam_count, red_seams=False, scale=False):
-        self.image = self.scale_image(image, scale)
+        self.image = self._setup_image(image, scale)
         self.seam_count = seam_count
         self.working_image = self.image.copy()
         self.viz_delay = 10
         self.seam_image = None
-        self.pos_map = self.setup_pos_map()
+        self.pos_map = self._setup_pos_map()
         self.mask = np.zeros_like(self.pos_map, dtype=bool)
         self.red_seams = red_seams
 
-    def scale_image(self, image, scale):
+    def _setup_image(self, image, scale):
         scale_factor = 0.75
         if scale:
             image = cv2.resize(
@@ -122,7 +122,7 @@ class BackwardSeamCarver:
             )
         return image
 
-    def setup_pos_map(self):
+    def _setup_pos_map(self):
         h, w, _ = self.image.shape
         map = np.zeros((h, w), dtype=tuple)
         for i in range(h):
@@ -130,34 +130,6 @@ class BackwardSeamCarver:
                 map[i, j] = (i, j)
         return map
 
-    # TODO: remove this function. The results were pretty bad.
-    def get_energy_map(self, image):
-        """
-        Parameters
-        ----------
-        image : numpy.ndarray (dtype=np.float64)
-
-        Returns
-        -------
-        gradient_array : numpy.ndarray (dtype=np.float64)
-        """
-        gradient_b = cv2.Laplacian(image[:, :, 0], cv2.CV_64F)
-        gradient_g = cv2.Laplacian(image[:, :, 1], cv2.CV_64F)
-        gradient_r = cv2.Laplacian(image[:, :, 2], cv2.CV_64F)
-        energy_map = gradient_b + gradient_g + gradient_r
-        cv2.imshow("energy", energy_map)
-        cv2.waitKey(self.viz_delay)
-        return energy_map
-
-    # TODO: Change this to use Sobel.
-    def get_energy_map_scharr(self, image):
-        b, g, r = cv2.split(image)
-        b_energy = np.absolute(cv2.Scharr(b, -1, 1, 0)) + np.absolute(cv2.Scharr(b, -1, 0, 1))
-        g_energy = np.absolute(cv2.Scharr(g, -1, 1, 0)) + np.absolute(cv2.Scharr(g, -1, 0, 1))
-        r_energy = np.absolute(cv2.Scharr(r, -1, 1, 0)) + np.absolute(cv2.Scharr(r, -1, 0, 1))
-        return b_energy + g_energy + r_energy
-
-    # TODO: Change this to use Sobel.
     def get_energy_map_sobel(self, image):
         b, g, r = cv2.split(image)
         b_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
@@ -324,7 +296,7 @@ def beach_back_removal(image, seams=300, redSeams=False):
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    handler = BackwardSeamCarver(image, seam_count=50, red_seams=True, scale=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=False, scale=False)
     res = handler.run()
 
     return res
