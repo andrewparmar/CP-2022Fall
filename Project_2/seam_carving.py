@@ -104,12 +104,31 @@ class BaseSeamCarver:
 
 
 class BackwardSeamCarver:
-    def __init__(self, image, seam_count):
-        self.image = image.copy()
+    def __init__(self, image, seam_count, red_seams=False, scale=False):
+        self.image = self.scale_image(image, scale)
         self.seam_count = seam_count
-        self.working_image = image.copy()
+        self.working_image = self.image.copy()
         self.viz_delay = 10
         self.seam_image = None
+        self.pos_map = self.setup_pos_map()
+        self.mask = np.zeros_like(self.pos_map, dtype=bool)
+        self.red_seams = red_seams
+
+    def scale_image(self, image, scale):
+        scale_factor = 0.75
+        if scale:
+            image = cv2.resize(
+                image, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA
+            )
+        return image
+
+    def setup_pos_map(self):
+        h, w, _ = self.image.shape
+        map = np.zeros((h, w), dtype=tuple)
+        for i in range(h):
+            for j in range(w):
+                map[i, j] = (i, j)
+        return map
 
     # TODO: remove this function. The results were pretty bad.
     def get_energy_map(self, image):
@@ -136,6 +155,14 @@ class BackwardSeamCarver:
         b_energy = np.absolute(cv2.Scharr(b, -1, 1, 0)) + np.absolute(cv2.Scharr(b, -1, 0, 1))
         g_energy = np.absolute(cv2.Scharr(g, -1, 1, 0)) + np.absolute(cv2.Scharr(g, -1, 0, 1))
         r_energy = np.absolute(cv2.Scharr(r, -1, 1, 0)) + np.absolute(cv2.Scharr(r, -1, 0, 1))
+        return b_energy + g_energy + r_energy
+
+    # TODO: Change this to use Sobel.
+    def get_energy_map_sobel(self, image):
+        b, g, r = cv2.split(image)
+        b_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
+        g_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
+        r_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
         return b_energy + g_energy + r_energy
 
     def get_lowest_cumulative_energy(self, energy_map):
@@ -194,6 +221,12 @@ class BackwardSeamCarver:
 
         return image
 
+    def remove_seam_from_map(self, seam_cells):
+        for i, j in seam_cells:
+            self.pos_map[i, j:-1] = self.pos_map[i, j + 1:]
+
+        self.pos_map = self.pos_map[:, :-1]
+
     def add_seam(self, image, seam_cells):
         h, w, d = image.shape
         a = np.zeros((h, 1, d), dtype=image.dtype)
@@ -228,24 +261,29 @@ class BackwardSeamCarver:
 
         return image
 
-    def run(self, extend=False, scaled=False):
-        if scaled:
-            scale = 0.75
-            self.working_image = cv2.resize(
-                self.image, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA
-            )
+    def mark_mask(self, seam):
+        for r, c in seam:
+            i, j = self.pos_map[r, c]
+            self.mask[i, j] = 1
 
-        working_img_copy = self.working_image.copy()
+    def apply_red_seams(self, image):
+        image[:, :, 0][self.mask] = 0
+        image[:, :, 1][self.mask] = 0
+        image[:, :, 2][self.mask] = 255
+        return image
+        # foo = np.repeat(np.atleast_3d(self.mask), 3, axis=2)
+        # image[foo] = (0, 0, 255)
+        # return image
 
+    def run(self, extend=False):
         seam_list = []
 
         for count in range(self.seam_count):
             loop_start = time.time()
             print(f"Removing seam #{count}")
-            # gray_img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY)
             img_f64 = self.working_image.astype(np.float64)
             start = time.time()
-            energy_map = self.get_energy_map_scharr(img_f64)
+            energy_map = self.get_energy_map_sobel(img_f64)
             print("energy_map", time.time() - start)
 
             start = time.time()
@@ -260,13 +298,19 @@ class BackwardSeamCarver:
             self.plot_seam(self.working_image, seam_cells)
 
             self.working_image = self.remove_seam(self.working_image, seam_cells)
+            self.mark_mask(seam_cells)
+            self.remove_seam_from_map(seam_cells)
 
             print("Loop time", time.time() - loop_start)
 
         if extend:
-            self.working_image = working_img_copy
+            self.working_image = self.image.copy()
             for seam in seam_list:
                 self.working_image = self.add_seam(self.working_image, seam)
+
+        if self.red_seams:
+            red_seam_image = self.apply_red_seams(self.image.copy())
+            return red_seam_image
 
         return self.working_image
 
@@ -280,8 +324,8 @@ def beach_back_removal(image, seams=300, redSeams=False):
    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    handler = BackwardSeamCarver(image, seam_count=seams)
-    res = handler.run(scaled=False)
+    handler = BackwardSeamCarver(image, seam_count=50, red_seams=True, scale=True)
+    res = handler.run()
 
     return res
 
