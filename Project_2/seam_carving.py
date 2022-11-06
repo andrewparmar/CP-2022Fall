@@ -103,7 +103,7 @@ class BaseSeamCarver:
     pass
 
 
-class BackwardSeamCarver:
+class BackwardSeamCarver(BaseSeamCarver):
     def __init__(self, image, seam_count, red_seams=False, scale=False):
         self.image = self._setup_image(image, scale)
         self.seam_count = seam_count
@@ -113,6 +113,7 @@ class BackwardSeamCarver:
         self.pos_map = self._setup_pos_map()
         self.mask = np.zeros_like(self.pos_map, dtype=bool)
         self.red_seams = red_seams
+        self.cum_offset = None
 
     def _setup_image(self, image, scale):
         scale_factor = 0.75
@@ -188,7 +189,7 @@ class BackwardSeamCarver:
         # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # plt.imshow(img_rgb); plt.show()
         foo = np.hstack((self.seam_image, image))
-        cv2.imshow("window", foo)
+        cv2.imshow("Removal", foo)
         cv2.waitKey(self.viz_delay)
 
         return image
@@ -201,16 +202,16 @@ class BackwardSeamCarver:
 
     def add_seam(self, image, seam_cells):
         h, w, d = image.shape
-        a = np.zeros((h, 1, d), dtype=image.dtype)
-        new_img = np.concatenate((image, a), axis=1)
+        extra_col = np.zeros((h, 1, d), dtype=image.dtype)
+        new_img = np.concatenate((image, extra_col), axis=1)
         for i, j in seam_cells:
             # shift pixels in new_img to make room for new seam
             # seam pixels are shifted to the right
-            new_img[i, j + 1:, :] = image[i, j:, :]
+            new_img[i, j + 2:, :] = image[i, j+1:, :]
 
             # calculate avg of seam's neighboring pixels.
-            l = j - 1
-            r = j + 1
+            l = j
+            r = j + 2 #TODO: consider using min(j+2, w)
             if l >= 0:
                 l_val = image[i, l, :]
             else:
@@ -228,7 +229,7 @@ class BackwardSeamCarver:
         # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # plt.imshow(img_rgb); plt.show()
         foo = np.hstack((self.seam_image, image))
-        cv2.imshow("window", foo)
+        cv2.imshow("Insertion", foo)
         cv2.waitKey(self.viz_delay)
 
         return image
@@ -247,7 +248,7 @@ class BackwardSeamCarver:
         # image[foo] = (0, 0, 255)
         # return image
 
-    def run(self, extend=False):
+    def _reduce(self):
         seam_list = []
 
         for count in range(self.seam_count):
@@ -275,6 +276,12 @@ class BackwardSeamCarver:
 
             print("Loop time", time.time() - loop_start)
 
+        return seam_list
+
+    def run_removal(self, extend=False):
+
+        seam_list = self._reduce()
+
         if extend:
             self.working_image = self.image.copy()
             for seam in seam_list:
@@ -286,18 +293,38 @@ class BackwardSeamCarver:
 
         return self.working_image
 
+    def get_offset_seam(self, seam):
+        offset_seam = []
+        for r, c in seam:
+            offset = self.cum_offset[r, c]
+            adjusted = (r + offset, c + offset)
+            offset_seam.append(adjusted)
+        return offset_seam
 
-class ForwardSeamCarver:
+    def run_insert(self):
+        seam_list = self._reduce()
+
+        self.cum_offset = np.cumsum(self.mask, axis=1) - 1
+
+        self.working_image = self.image.copy()
+        for seam in seam_list:
+            # seam = self.get_offset_seam(seam)
+            self.working_image = self.add_seam(self.working_image, seam)
+
+        return self.working_image
+
+class ForwardSeamCarver(BaseSeamCarver):
     pass
 
 
 def beach_back_removal(image, seams=300, redSeams=False):
     """ Use the backward method of seam carving from the 2007 paper to remove
-   the required number of vertical seams in the provided image. Do NOT hard-code the
+    the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=False, scale=False)
-    res = handler.run()
+    # TODO: adjust the input args and kwargs that are hardcoded.
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, scale=False)
+    res = handler.run_removal()
 
     return res
 
@@ -309,8 +336,8 @@ def dolphin_back_insert(image, seams=100, redSeams=False):
     This function is called twice:  dolphin_back_insert with redSeams = True
                                     dolphin_back_insert without redSeams = False
     """
-    handler = BackwardSeamCarver(image, seams)
-    res = handler.run(extend=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=False)
+    res = handler.run_insert()
 
     return res
 
