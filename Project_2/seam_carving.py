@@ -238,10 +238,10 @@ class BackwardSeamCarver(BaseSeamCarver):
             i, j = self.pos_map[r, c]
             self.mask[i, j] = 1
 
-    def apply_red_seams(self, image):
-        image[:, :, 0][self.mask] = 0
-        image[:, :, 1][self.mask] = 0
-        image[:, :, 2][self.mask] = 255
+    def apply_red_seams(self, image, mask):
+        image[:, :, 0][mask] = 0
+        image[:, :, 1][mask] = 0
+        image[:, :, 2][mask] = 255
         return image
         # foo = np.repeat(np.atleast_3d(self.mask), 3, axis=2)
         # image[foo] = (0, 0, 255)
@@ -281,7 +281,7 @@ class BackwardSeamCarver(BaseSeamCarver):
         seam_list = self._reduce()
 
         if self.red_seams:
-            red_seam_image = self.apply_red_seams(self.image.copy())
+            red_seam_image = self.apply_red_seams(self.image.copy(), self.mask)
             return red_seam_image
 
         return self.working_image
@@ -323,6 +323,10 @@ class BackwardSeamCarver(BaseSeamCarver):
             self._mask_insert(seam)
             seam_list = self.update_seams(seam_list, seam)
 
+        if self.red_seams:
+            red_seam_image = self.apply_red_seams(self.working_image.copy(), self.mask)
+            return red_seam_image
+
         return self.working_image
 
 class ForwardSeamCarver(BaseSeamCarver):
@@ -348,7 +352,8 @@ def dolphin_back_insert(image, seams=100, redSeams=False):
     This function is called twice:  dolphin_back_insert with redSeams = True
                                     dolphin_back_insert without redSeams = False
     """
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=False)
+    # TODO: Do not hardcode kwargs.
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True)
     res = handler.run_insert()
 
     return res
