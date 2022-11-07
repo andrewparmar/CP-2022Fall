@@ -153,25 +153,24 @@ class BackwardSeamCarver(BaseSeamCarver):
 
     def get_lowest_energy_seam(self, M):
         h, w = M.shape
-        res = [(h - 1, np.argmin(M[-1, :]))]
-        prev_j = np.argmin(M[-1, :])
+        seam = np.zeros(h, dtype=np.int64)
+        seam[-1] = np.argmin(M[-1, :])
+        prev_j = seam[-1]
 
         for i in range(h - 2, -1, -1):
             min_val = np.inf
-            min_cell = None
+            min_col = None
             for nc in [(prev_j - 1), prev_j, (prev_j + 1)]:
                 if 0 <= nc < w and M[i, nc] < min_val:
                     min_val = M[i, nc]
-                    min_cell = (i, nc)
-            res.append(min_cell)
-            prev_j = min_cell[1]
-
-        res.reverse()
-        return res
+                    min_col = nc
+            seam[i] = min_col
+            prev_j = seam[i]
+        return seam
 
     def plot_seam(self, image, seam_cells):
         self.seam_image = image.copy()
-        for i, j in seam_cells:
+        for i, j in enumerate(seam_cells):
             self.seam_image[i, j, :] = (0, 0, 255)
 
         # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -181,7 +180,7 @@ class BackwardSeamCarver(BaseSeamCarver):
 
     def remove_seam(self, image, seam_cells):
         # img_cp = image.copy()
-        for i, j in seam_cells:
+        for i, j in enumerate(seam_cells):
             image[i, j:-1, :] = image[i, j + 1:, :]
 
         image = image[:, :-1, :]
@@ -195,7 +194,7 @@ class BackwardSeamCarver(BaseSeamCarver):
         return image
 
     def remove_seam_from_map(self, seam_cells):
-        for i, j in seam_cells:
+        for i, j in enumerate(seam_cells):
             self.pos_map[i, j:-1] = self.pos_map[i, j + 1:]
 
         self.pos_map = self.pos_map[:, :-1]
@@ -204,7 +203,7 @@ class BackwardSeamCarver(BaseSeamCarver):
         h, w, d = image.shape
         extra_col = np.zeros((h, 1, d), dtype=image.dtype)
         new_img = np.concatenate((image, extra_col), axis=1)
-        for i, j in seam_cells:
+        for i, j in enumerate(seam_cells):
             # shift pixels in new_img to make room for new seam
             # seam pixels are shifted to the right
             new_img[i, j + 2:, :] = image[i, j+1:, :]
@@ -235,7 +234,7 @@ class BackwardSeamCarver(BaseSeamCarver):
         return image
 
     def mark_mask(self, seam):
-        for r, c in seam:
+        for r, c in enumerate(seam):
             i, j = self.pos_map[r, c]
             self.mask[i, j] = 1
 
@@ -278,14 +277,8 @@ class BackwardSeamCarver(BaseSeamCarver):
 
         return seam_list
 
-    def run_removal(self, extend=False):
-
+    def run_removal(self):
         seam_list = self._reduce()
-
-        if extend:
-            self.working_image = self.image.copy()
-            for seam in seam_list:
-                self.working_image = self.add_seam(self.working_image, seam)
 
         if self.red_seams:
             red_seam_image = self.apply_red_seams(self.image.copy())
@@ -293,23 +286,42 @@ class BackwardSeamCarver(BaseSeamCarver):
 
         return self.working_image
 
-    def get_offset_seam(self, seam):
-        offset_seam = []
-        for r, c in seam:
-            offset = self.cum_offset[r, c]
-            adjusted = (r + offset, c + offset)
-            offset_seam.append(adjusted)
-        return offset_seam
+    def _mask_insert(self, seam_cells):
+        h, w = self.mask.shape
+        extra_col = np.zeros((h, 1), dtype=self.mask.dtype)
+        new_mask = np.concatenate((self.mask, extra_col), axis=1)
+        for i, j in enumerate(seam_cells):
+            # shift pixels in new_img to make room for new seam
+            # pixels to the right of the seam are shifted 1 pixel over to the right
+            new_mask[i, j + 2:] = self.mask[i, j+1:]
+            new_mask[i, j+1] = 0
+            new_mask[i, j] = 1
+
+        self.mask = new_mask.copy()
+        # TODO: visualize mask with cv2.imshow.
+
+    def update_seams(self, seam_list, curr_seam):
+        new_seam_list = []
+        for seam in seam_list:
+            new_seam = seam.copy()
+            new_seam[np.where(seam > curr_seam)] = new_seam[np.where(seam > curr_seam)] + 2
+            new_seam_list.append(new_seam)
+        return new_seam_list
 
     def run_insert(self):
-        seam_list = self._reduce()
+        # Revers the list because we are using pop in the while loop below.
+        seam_list = self._reduce()[::-1]
 
         self.cum_offset = np.cumsum(self.mask, axis=1) - 1
+        self.mask = np.zeros_like(self.image[:,:,0], dtype=bool)
 
         self.working_image = self.image.copy()
-        for seam in seam_list:
+        while seam_list:
+            seam = seam_list.pop()
             # seam = self.get_offset_seam(seam)
             self.working_image = self.add_seam(self.working_image, seam)
+            self._mask_insert(seam)
+            seam_list = self.update_seams(seam_list, seam)
 
         return self.working_image
 
@@ -323,7 +335,7 @@ def beach_back_removal(image, seams=300, redSeams=False):
     number of seams to be removed.
     """
     # TODO: adjust the input args and kwargs that are hardcoded.
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, scale=False)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, scale=True)
     res = handler.run_removal()
 
     return res
