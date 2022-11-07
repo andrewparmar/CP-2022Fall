@@ -100,10 +100,6 @@ def returnYourName():
 
 
 class BaseSeamCarver:
-    pass
-
-
-class BackwardSeamCarver(BaseSeamCarver):
     def __init__(self, image, seam_count, red_seams=False, scale=False):
         self.image = self._setup_image(image, scale)
         self.seam_count = seam_count
@@ -130,13 +126,6 @@ class BackwardSeamCarver(BaseSeamCarver):
             for j in range(w):
                 map[i, j] = (i, j)
         return map
-
-    def get_energy_map_sobel(self, image):
-        b, g, r = cv2.split(image)
-        b_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
-        g_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
-        r_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
-        return b_energy + g_energy + r_energy
 
     def get_lowest_cumulative_energy(self, energy_map):
         h, w = energy_map.shape
@@ -255,7 +244,7 @@ class BackwardSeamCarver(BaseSeamCarver):
             print(f"Removing seam #{count}")
             img_f64 = self.working_image.astype(np.float64)
             start = time.time()
-            energy_map = self.get_energy_map_sobel(img_f64)
+            energy_map = self.get_energy_map(img_f64)
             print("energy_map", time.time() - start)
 
             start = time.time()
@@ -328,6 +317,18 @@ class BackwardSeamCarver(BaseSeamCarver):
             return red_seam_image
 
         return self.working_image
+
+
+class BackwardSeamCarver(BaseSeamCarver):
+
+    @staticmethod
+    def get_energy_map(image):
+        b, g, r = cv2.split(image)
+        b_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
+        g_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
+        r_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
+        return b_energy + g_energy + r_energy
+
 
 class ForwardSeamCarver(BaseSeamCarver):
     pass
