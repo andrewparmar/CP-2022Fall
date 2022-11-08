@@ -199,7 +199,7 @@ class BaseSeamCarver:
 
             # calculate avg of seam's neighboring pixels.
             l = j
-            r = j + 2 #TODO: consider using min(j+2, w)
+            r = min(j+2, w)
             if l >= 0:
                 l_val = image[i, l, :]
             else:
@@ -297,7 +297,7 @@ class BaseSeamCarver:
             new_seam_list.append(new_seam)
         return new_seam_list
 
-    def run_insert(self):
+    def run_insert(self, double_insert=False):
         # Revers the list because we are using pop in the while loop below.
         seam_list = self._reduce()[::-1]
 
@@ -305,12 +305,26 @@ class BaseSeamCarver:
         self.mask = np.zeros_like(self.image[:,:,0], dtype=bool)
 
         self.working_image = self.image.copy()
+
+        if double_insert:
+            tmp_list = []
+            for seam in seam_list:
+                tmp_list.append(seam)
+                tmp_list.append(seam)
+            seam_list = tmp_list
+
+        print("#"*80, "Starting insertions")
+        count = 0
         while seam_list:
+            print("Counter", count)
             seam = seam_list.pop()
             # seam = self.get_offset_seam(seam)
             self.working_image = self.add_seam(self.working_image, seam)
             self._mask_insert(seam)
+            # if seam_list and not np.all(seam == seam_list[-1]):
+            #     print("*"*80)
             seam_list = self.update_seams(seam_list, seam)
+            count += 1
 
         if self.red_seams:
             red_seam_image = self.apply_red_seams(self.working_image.copy(), self.mask)
@@ -319,8 +333,6 @@ class BaseSeamCarver:
         return self.working_image
 
 
-class BackwardSeamCarver(BaseSeamCarver):
-
     @staticmethod
     def get_energy_map(image):
         b, g, r = cv2.split(image)
@@ -328,6 +340,10 @@ class BackwardSeamCarver(BaseSeamCarver):
         g_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
         r_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
         return b_energy + g_energy + r_energy
+
+
+class BackwardSeamCarver(BaseSeamCarver):
+    ...
 
 
 class ForwardSeamCarver(BaseSeamCarver):
@@ -354,7 +370,7 @@ def dolphin_back_insert(image, seams=100, redSeams=False):
                                     dolphin_back_insert without redSeams = False
     """
     # TODO: Do not hardcode kwargs.
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
     res = handler.run_insert()
 
     return res
@@ -366,9 +382,11 @@ def dolphin_back_double_insert(image, seams=100, redSeams=False):
     i.e. insert seams, then insert seams again.
     Do NOT hard-code the number of seams to be inserted.
     """
-    # WRITE YOUR CODE HERE.
+    # TODO: Do not hardcode kwargs.
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True)
+    res = handler.run_insert(True)
 
-    raise NotImplementedError
+    return res
 
 
 def bench_back_removal(image, seams=225, redSeams=False):
