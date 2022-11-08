@@ -347,7 +347,76 @@ class BackwardSeamCarver(BaseSeamCarver):
 
 
 class ForwardSeamCarver(BaseSeamCarver):
-    pass
+
+    def get_lowest_cumulative_energy(self, energy_map):
+        h, w = energy_map.shape
+        # TODO: Change this to 3 channels.
+        I = np.zeros((h + 2, w + 2))
+        I[1:-1, 1:-1] = self.working_image[:,:,0]
+
+        """
+        (a) CL(i,j) = |I(i, j + 1) − I(i, j − 1)| + |I(i − 1, j) − I(i, j − 1)|
+        (b) CU(i,j) = |I(i, j + 1) − I(i, j − 1)|
+        (c) CR(i,j) = |I(i, j + 1) − I(i, j − 1)| + |I(i − 1, j) − I(i, j + 1)|
+        """
+
+        # Notes: Assumption here that the outer edges should be 0's and not a mirror.
+        C_l = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2]) + np.abs(I[0:-2, 1:-1] - I[1:-1, 0:-2])
+        C_u = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2])
+        C_r = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2]) + np.abs(I[0:-2, 1:-1] - I[1:-1, 2:])
+
+        M = np.zeros((h+1, w+2))
+        # Set top row to energy map top row
+        # M[0, :] = energy_map[0, :]
+
+        for i in range(1, h+1):
+            for j in range(1, w+1):
+                a = M[i - 1, j - 1] + C_l[i - 1, j - 1]
+                b = M[i - 1, j] + C_u[i - 1, j - 1]
+                c = M[i - 1, j + 1] + C_r[i - 1, j - 1]
+                M[i, j] = energy_map[i-1, j-1] + min(a, b, c)
+
+        return M[1:, 1:-1]
+
+
+    def _reduce(self):
+        seam_list = []
+
+        for count in range(self.seam_count):
+            loop_start = time.time()
+            print(f"Removing seam #{count}")
+            img_f64 = self.working_image.astype(np.float64)
+            start = time.time()
+            energy_map = self.get_energy_map(img_f64)
+            print("energy_map", time.time() - start)
+
+            start = time.time()
+            M = self.get_lowest_cumulative_energy(energy_map)
+            print("cumulative map", time.time() - start)
+
+            start = time.time()
+            seam_cells = self.get_lowest_energy_seam(M)
+            print("get seam", time.time() - start)
+            seam_list.append(seam_cells)
+
+            self.plot_seam(self.working_image, seam_cells)
+
+            self.working_image = self.remove_seam(self.working_image, seam_cells)
+            self.mark_mask(seam_cells)
+            self.remove_seam_from_map(seam_cells)
+
+            print("Loop time", time.time() - loop_start)
+
+        return seam_list
+
+    def run_removal(self):
+        seam_list = self._reduce()
+
+        if self.red_seams:
+            red_seam_image = self.apply_red_seams(self.image.copy(), self.mask)
+            return red_seam_image
+
+        return self.working_image
 
 
 def beach_back_removal(image, seams=300, redSeams=False):
@@ -396,9 +465,10 @@ def bench_back_removal(image, seams=225, redSeams=False):
     This function is called twice:  bench_back_removal, redSeams = True
                                     bench_back_removal, redSeams = False
     """
-    # WRITE YOUR CODE HERE.
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
+    res = handler.run_removal()
 
-    raise NotImplementedError
+    return res
 
 
 def bench_for_removal(image, seams=225, redSeams=False):
@@ -408,18 +478,20 @@ def bench_for_removal(image, seams=225, redSeams=False):
     This function is called twice:  bench_for_removal, redSeams = True
                                     bench_for_removal, redSeams = False
   """
-    # WRITE YOUR CODE HERE.
+    handler = ForwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
+    res = handler.run_removal()
 
-    raise NotImplementedError
+    return res
 
 
 def car_back_insert(image, seams=170, redSeams=False):
     """ Fig 9 from 2008 paper. Use the backward method of seam carving to insert
     vertical seams in the image. Do NOT hard-code the number of seams to be inserted.
     """
-    # WRITE YOUR CODE HERE.
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
+    res = handler.run_insert()
 
-    raise NotImplementedError
+    return res
 
 
 def car_for_insert(image, seams=170, redSeams=False):
