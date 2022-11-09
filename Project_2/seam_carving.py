@@ -110,6 +110,7 @@ class BaseSeamCarver:
         self.mask = np.zeros_like(self.pos_map, dtype=bool)
         self.red_seams = red_seams
         self.cum_offset = None
+        self.M = None
 
     def _setup_image(self, image, scale):
         scale_factor = 0.75
@@ -126,19 +127,6 @@ class BaseSeamCarver:
             for j in range(w):
                 map[i, j] = (i, j)
         return map
-
-    def get_lowest_cumulative_energy(self, energy_map):
-        h, w = energy_map.shape
-        M = np.zeros((h, w))
-        # Set top row to energy map top row
-        M[0, :] = energy_map[0, :]
-
-        for i in range(1, h):
-            for j in range(w):
-                M[i, j] = energy_map[i, j] + \
-                          min(M[i - 1, max(0, j - 1)], M[i - 1, j], M[i - 1, min(w-1, j + 1)])
-
-        return M
 
     def get_lowest_energy_seam(self, M):
         h, w = M.shape
@@ -157,6 +145,9 @@ class BaseSeamCarver:
             prev_j = seam[i]
         return seam
 
+    def get_lowest_cumulative_energy(self):
+        raise NotImplementedError
+
     def plot_seam(self, image, seam_cells):
         self.seam_image = image.copy()
         for i, j in enumerate(seam_cells):
@@ -168,15 +159,14 @@ class BaseSeamCarver:
         # cv2.waitKey(1000)
 
     def remove_seam(self, image, seam_cells):
-        # img_cp = image.copy()
         for i, j in enumerate(seam_cells):
             image[i, j:-1, :] = image[i, j + 1:, :]
 
         image = image[:, :-1, :]
 
-        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # plt.imshow(img_rgb); plt.show()
-        foo = np.hstack((self.seam_image, image))
+        M_normed = cv2.normalize(self.M, -1, 0, 255, cv2.NORM_MINMAX)
+        M_normed = cv2.cvtColor(M_normed.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        foo = np.hstack((M_normed, self.seam_image, image))
         cv2.imshow("Removal", foo)
         cv2.waitKey(self.viz_delay)
 
@@ -248,11 +238,11 @@ class BaseSeamCarver:
             print("energy_map", time.time() - start)
 
             start = time.time()
-            M = self.get_lowest_cumulative_energy(energy_map)
+            self.M = self.get_lowest_cumulative_energy(energy_map)
             print("cumulative map", time.time() - start)
 
             start = time.time()
-            seam_cells = self.get_lowest_energy_seam(M)
+            seam_cells = self.get_lowest_energy_seam(self.M)
             print("get seam", time.time() - start)
             seam_list.append(seam_cells)
 
@@ -332,27 +322,60 @@ class BaseSeamCarver:
 
         return self.working_image
 
+    # @staticmethod
+    # def get_energy_map(image):
+    #     b, g, r = cv2.split(image)
+    #     b_ch_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
+    #     g_ch_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
+    #     r_ch_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
+    #     return b_ch_energy + g_ch_energy + r_ch_energy
+
+    # @staticmethod
+    # def get_energy_map(image):
+    #     b_ch, g_ch, r_ch = cv2.split(image)
+    #     b_ch_energy = np.absolute(cv2.Scharr(b_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(b_ch, -1, 0, 1))
+    #     g_ch_energy = np.absolute(cv2.Scharr(g_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(g_ch, -1, 0, 1))
+    #     r_ch_energy = np.absolute(cv2.Scharr(r_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(r_ch, -1, 0, 1))
+    #     return b_ch_energy + g_ch_energy + r_ch_energy
+
+    # @staticmethod
+    # def get_energy_map(image):
+    #     b_ch, g_ch, r_ch = cv2.split(image)
+    #     b_ch_energy = np.absolute(np.gradient(b_ch, axis=0)) + np.absolute(np.gradient(b_ch, axis=1))
+    #     g_ch_energy = np.absolute(np.gradient(g_ch, axis=0)) + np.absolute(np.gradient(g_ch, axis=1))
+    #     r_ch_energy = np.absolute(np.gradient(r_ch, axis=0)) + np.absolute(np.gradient(r_ch, axis=1))
+    #     return b_ch_energy + g_ch_energy + r_ch_energy
 
     @staticmethod
     def get_energy_map(image):
-        b, g, r = cv2.split(image)
-        b_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
-        g_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
-        r_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
-        return b_energy + g_energy + r_energy
+        kernel_x = np.array([[0, 0, 0], [1, 0, -1], [0, 0, 0]], np.float64)
+        kernel_y = np.array([[0, 1, 0], [0, 0, 0], [0, -1, 0]], np.float64)
+
+        img_x_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_x, borderType=cv2.BORDER_REFLECT_101)
+        img_y_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_y, borderType=cv2.BORDER_REFLECT_101)
+
+        return np.sum(np.abs(img_x_grad), axis=2) + np.sum(np.abs(img_y_grad), axis=2)
 
 
 class BackwardSeamCarver(BaseSeamCarver):
-    ...
+    def get_lowest_cumulative_energy(self, energy_map):
+        h, w = energy_map.shape
+        M = np.zeros((h, w), dtype=np.float64)
+        # Set top row to energy map top row
+        M[0, :] = energy_map[0, :]
+
+        for i in range(1, h):
+            for j in range(w):
+                M[i, j] = energy_map[i, j] + \
+                          min(M[i - 1, max(0, j - 1)], M[i - 1, j], M[i - 1, min(w - 1, j + 1)])
+        return M
 
 
 class ForwardSeamCarver(BaseSeamCarver):
-
-    def get_lowest_cumulative_energy(self, energy_map):
+    def _get_lowest_cumulative_energy(self, energy_map):
         h, w = energy_map.shape
-        # TODO: Change this to 3 channels.
-        I = np.zeros((h + 2, w + 2))
-        I[1:-1, 1:-1] = self.working_image[:,:,0]
+        img = np.zeros((h + 2, w + 2))
+        img[1:-1, 1:-1] = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY).astype(np.float64)
 
         """
         (a) CL(i,j) = |I(i, j + 1) − I(i, j − 1)| + |I(i − 1, j) − I(i, j − 1)|
@@ -361,9 +384,9 @@ class ForwardSeamCarver(BaseSeamCarver):
         """
 
         # Notes: Assumption here that the outer edges should be 0's and not a mirror.
-        C_l = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2]) + np.abs(I[0:-2, 1:-1] - I[1:-1, 0:-2])
-        C_u = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2])
-        C_r = np.abs(I[1:-1, 2:] - I[1:-1, 0:-2]) + np.abs(I[0:-2, 1:-1] - I[1:-1, 2:])
+        c_l = np.abs(img[1:-1, 2:] - img[1:-1, 0:-2]) + np.abs(img[0:-2, 1:-1] - img[1:-1, 0:-2])
+        c_u = np.abs(img[1:-1, 2:] - img[1:-1, 0:-2])
+        c_r = np.abs(img[1:-1, 2:] - img[1:-1, 0:-2]) + np.abs(img[0:-2, 1:-1] - img[1:-1, 2:])
 
         M = np.zeros((h+1, w+2))
         # Set top row to energy map top row
@@ -371,52 +394,42 @@ class ForwardSeamCarver(BaseSeamCarver):
 
         for i in range(1, h+1):
             for j in range(1, w+1):
-                a = M[i - 1, j - 1] + C_l[i - 1, j - 1]
-                b = M[i - 1, j] + C_u[i - 1, j - 1]
-                c = M[i - 1, j + 1] + C_r[i - 1, j - 1]
+                a = M[i - 1, j - 1] + c_l[i - 1, j - 1]
+                b = M[i - 1, j] + c_u[i - 1, j - 1]
+                c = M[i - 1, j + 1] + c_r[i - 1, j - 1]
                 M[i, j] = energy_map[i-1, j-1] + min(a, b, c)
 
         return M[1:, 1:-1]
 
+    # TODO: Modify or remove this. This is a reference.
+    def get_lowest_cumulative_energy(self, energy_map):
+        img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY).astype(np.float64)
+        h, w = img.shape
+        energy = np.zeros((h, w))
+        m = np.zeros((h, w))
 
-    def _reduce(self):
-        seam_list = []
+        U = np.roll(img, 1, axis=0)
+        L = np.roll(img, 1, axis=1)
+        R = np.roll(img, -1, axis=1)
 
-        for count in range(self.seam_count):
-            loop_start = time.time()
-            print(f"Removing seam #{count}")
-            img_f64 = self.working_image.astype(np.float64)
-            start = time.time()
-            energy_map = self.get_energy_map(img_f64)
-            print("energy_map", time.time() - start)
+        cU = np.abs(R - L)
+        cL = np.abs(U - L) + cU
+        cR = np.abs(U - R) + cU
 
-            start = time.time()
-            M = self.get_lowest_cumulative_energy(energy_map)
-            print("cumulative map", time.time() - start)
+        for i in range(1, h):
+            mU = m[i - 1]
+            mL = np.roll(mU, 1)
+            mR = np.roll(mU, -1)
 
-            start = time.time()
-            seam_cells = self.get_lowest_energy_seam(M)
-            print("get seam", time.time() - start)
-            seam_list.append(seam_cells)
+            mULR = np.array([mU, mL, mR])
+            cULR = np.array([cU[i], cL[i], cR[i]])
+            mULR += cULR
 
-            self.plot_seam(self.working_image, seam_cells)
+            argmins = np.argmin(mULR, axis=0)
+            m[i] = np.choose(argmins, mULR)
+            energy[i] = np.choose(argmins, cULR)
 
-            self.working_image = self.remove_seam(self.working_image, seam_cells)
-            self.mark_mask(seam_cells)
-            self.remove_seam_from_map(seam_cells)
-
-            print("Loop time", time.time() - loop_start)
-
-        return seam_list
-
-    def run_removal(self):
-        seam_list = self._reduce()
-
-        if self.red_seams:
-            red_seam_image = self.apply_red_seams(self.image.copy(), self.mask)
-            return red_seam_image
-
-        return self.working_image
+        return energy
 
 
 def beach_back_removal(image, seams=300, redSeams=False):
