@@ -541,9 +541,13 @@ def difference_image(result_image, comparison_image):
         2) Before converting back to uint8, complete any necessary scaling,
            rounding, or clipping.
     """
-    # WRITE YOUR CODE HERE.
+    # result_gray = cv2.cvtColor(result_image, cv2.COLOR_BGR2GRAY)
+    # comparison_gray = cv2.cvtColor(comparison_image, cv2.COLOR_BGR2GRAY)
+    # foo = np.abs(result_gray.astype(np.float64) - comparison_gray.astype(np.float64))
 
-    raise NotImplementedError
+    foo = np.abs(result_image.astype(np.float64) - comparison_image.astype(np.float64))
+    return foo.astype(np.uint8)
+
 
 
 def numerical_comparison(result_image, comparison_image):
