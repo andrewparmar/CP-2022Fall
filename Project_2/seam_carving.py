@@ -98,6 +98,8 @@ def returnYourName():
         your image array is complete on return.
 """
 
+VISUALIZE = True
+
 
 class BaseSeamCarver:
     def __init__(self, image, seam_count, red_seams=False, scale=False):
@@ -153,22 +155,18 @@ class BaseSeamCarver:
         for i, j in enumerate(seam_cells):
             self.seam_image[i, j, :] = (0, 0, 255)
 
-        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # plt.imshow(img_rgb); plt.show()
-        # cv2.imshow("window1", self.seam_image)
-        # cv2.waitKey(1000)
-
     def remove_seam(self, image, seam_cells):
         for i, j in enumerate(seam_cells):
             image[i, j:-1, :] = image[i, j + 1:, :]
 
         image = image[:, :-1, :]
 
-        M_normed = cv2.normalize(self.M, -1, 0, 255, cv2.NORM_MINMAX)
-        M_normed = cv2.cvtColor(M_normed.astype(np.uint8), cv2.COLOR_GRAY2BGR)
-        foo = np.hstack((M_normed, self.seam_image, image))
-        cv2.imshow("Removal", foo)
-        cv2.waitKey(self.viz_delay)
+        if VISUALIZE:
+            M_normed = cv2.normalize(self.M, -1, 0, 255, cv2.NORM_MINMAX)
+            M_normed = cv2.cvtColor(M_normed.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+            foo = np.hstack((M_normed, self.seam_image, image))
+            cv2.imshow("Removal", foo)
+            cv2.waitKey(self.viz_delay)
 
         return image
 
@@ -204,11 +202,10 @@ class BaseSeamCarver:
 
         image = new_img
 
-        # img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # plt.imshow(img_rgb); plt.show()
-        foo = np.hstack((self.seam_image, image))
-        cv2.imshow("Insertion", foo)
-        cv2.waitKey(self.viz_delay)
+        if VISUALIZE:
+            foo = np.hstack((self.seam_image, image))
+            cv2.imshow("Insertion", foo)
+            cv2.waitKey(self.viz_delay)
 
         return image
 
@@ -348,11 +345,14 @@ class BaseSeamCarver:
 
     @staticmethod
     def get_energy_map(image):
-        kernel_x = np.array([[0, 0, 0], [1, 0, -1], [0, 0, 0]], np.float64)
-        kernel_y = np.array([[0, 1, 0], [0, 0, 0], [0, -1, 0]], np.float64)
+        image = cv2.copyMakeBorder(image, 1, 1, 1, 1, borderType=cv2.BORDER_WRAP)
+        kernel_x = np.array([[0, 0, 0], [1, 0, -1], [0, 0, 0]], dtype=np.float64)
+        kernel_y = np.array([[0, 1, 0], [0, 0, 0], [0, -1, 0]], dtype=np.float64)
 
         img_x_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_x, borderType=cv2.BORDER_REFLECT_101)
         img_y_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_y, borderType=cv2.BORDER_REFLECT_101)
+        img_x_grad = img_x_grad[1:-1, 1:-1, :]
+        img_y_grad = img_y_grad[1:-1, 1:-1, :]
 
         return np.sum(np.abs(img_x_grad), axis=2) + np.sum(np.abs(img_y_grad), axis=2)
 
@@ -437,8 +437,7 @@ def beach_back_removal(image, seams=300, redSeams=False):
     the required number of vertical seams in the provided image. Do NOT hard-code the
     number of seams to be removed.
     """
-    # TODO: adjust the input args and kwargs that are hardcoded.
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, scale=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
     res = handler.run_removal()
 
     return res
@@ -451,7 +450,6 @@ def dolphin_back_insert(image, seams=100, redSeams=False):
     This function is called twice:  dolphin_back_insert with redSeams = True
                                     dolphin_back_insert without redSeams = False
     """
-    # TODO: Do not hardcode kwargs.
     handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
     res = handler.run_insert()
 
@@ -465,7 +463,7 @@ def dolphin_back_double_insert(image, seams=100, redSeams=False):
     Do NOT hard-code the number of seams to be inserted.
     """
     # TODO: Do not hardcode kwargs.
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
     res = handler.run_insert(True)
 
     return res
