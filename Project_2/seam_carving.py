@@ -274,7 +274,6 @@ class BaseSeamCarver:
             new_mask[i, j] = 1
 
         self.mask = new_mask.copy()
-        # TODO: visualize mask with cv2.imshow.
 
     def update_seams(self, seam_list, curr_seam):
         new_seam_list = []
@@ -462,7 +461,6 @@ def dolphin_back_double_insert(image, seams=100, redSeams=False):
     i.e. insert seams, then insert seams again.
     Do NOT hard-code the number of seams to be inserted.
     """
-    # TODO: Do not hardcode kwargs.
     handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
     res = handler.run_insert(True)
 
@@ -583,9 +581,11 @@ def numerical_comparison(result_image, comparison_image):
 
     NOTE: you may return only one or two values; choose the best one(s) you tried.
     """
-    # WRITE YOUR CODE HERE.
+    error = result_image.astype(np.float32) - comparison_image.astype(np.float32)
+    mse = np.square(error).mean()
+    rmse = np.sqrt(mse)
 
-    raise NotImplementedError
+    return mse, rmse
 
 
 if __name__ == "__main__":
