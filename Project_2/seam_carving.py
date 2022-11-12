@@ -99,6 +99,7 @@ def returnYourName():
 """
 
 VISUALIZE = True
+VERBOSE = False
 
 
 class BaseSeamCarver:
@@ -228,19 +229,23 @@ class BaseSeamCarver:
 
         for count in range(self.seam_count):
             loop_start = time.time()
-            print(f"Removing seam #{count}")
+            if VERBOSE:
+                print(f"Removing seam #{count}")
             img_f64 = self.working_image.astype(np.float64)
             start = time.time()
             energy_map = self.get_energy_map(img_f64)
-            print("energy_map", time.time() - start)
+            if VERBOSE:
+                print("energy_map", time.time() - start)
 
             start = time.time()
             self.M = self.get_lowest_cumulative_energy(energy_map)
-            print("cumulative map", time.time() - start)
+            if VERBOSE:
+                print("cumulative map", time.time() - start)
 
             start = time.time()
             seam_cells = self.get_lowest_energy_seam(self.M)
-            print("get seam", time.time() - start)
+            if VERBOSE:
+                print("get seam", time.time() - start)
             seam_list.append(seam_cells)
 
             self.plot_seam(self.working_image, seam_cells)
@@ -249,12 +254,13 @@ class BaseSeamCarver:
             self.mark_mask(seam_cells)
             self.remove_seam_from_map(seam_cells)
 
-            print("Loop time", time.time() - loop_start)
+            if VERBOSE:
+                print("Loop time", time.time() - loop_start)
 
         return seam_list
 
     def run_removal(self):
-        seam_list = self._reduce()
+        self._reduce()
 
         if self.red_seams:
             red_seam_image = self.apply_red_seams(self.image.copy(), self.mask)
@@ -292,10 +298,10 @@ class BaseSeamCarver:
 
         self.working_image = self.image.copy()
 
-        print("#"*80, "Starting insertions")
         count = 0
         while seam_list:
-            print("Counter", count)
+            if VERBOSE:
+                print("Counter", count)
             seam = seam_list.pop()
             self.working_image = self.add_seam(self.working_image, seam)
             self._mask_insert(seam)
@@ -427,7 +433,7 @@ def dolphin_back_double_insert(image, seams=100, redSeams=False):
     i.e. insert seams, then insert seams again.
     Do NOT hard-code the number of seams to be inserted.
     """
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, double_insert=True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams, double_insert=True)
     res = handler.run_insert()
 
     return res
