@@ -147,7 +147,7 @@ class BaseSeamCarver:
             prev_j = seam[i]
         return seam
 
-    def get_lowest_cumulative_energy(self):
+    def get_lowest_cumulative_energy(self, energy_map):
         raise NotImplementedError
 
     def plot_seam(self, image, seam_cells):
@@ -372,97 +372,35 @@ class BackwardSeamCarver(BaseSeamCarver):
 
 class ForwardSeamCarver(BaseSeamCarver):
     def get_lowest_cumulative_energy(self, energy_map):
-        h, w = energy_map.shape
-        # img = np.zeros((h + 2, w + 2))
-        # img[1:-1, 1:-1] = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY).astype(np.float64)
-        img2 = cv2.copyMakeBorder(self.working_image, 1, 1, 1, 1, borderType=cv2.BORDER_WRAP)
-        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY).astype(np.float64)
         """
         (a) CL(i,j) = |I(i, j + 1) − I(i, j − 1)| + |I(i − 1, j) − I(i, j − 1)|
         (b) CU(i,j) = |I(i, j + 1) − I(i, j − 1)|
         (c) CR(i,j) = |I(i, j + 1) − I(i, j − 1)| + |I(i − 1, j) − I(i, j + 1)|
         """
-        u = img2[0:-2, 1:-1]
-        l = img2[1:-1, 0:-2]
-        r = img2[1:-1, 2:]
+        h, w = energy_map.shape
+        img_pad = cv2.copyMakeBorder(self.working_image, 1, 1, 1, 1, borderType=cv2.BORDER_WRAP)
+        img = cv2.cvtColor(img_pad, cv2.COLOR_BGR2GRAY).astype(np.float64)
 
-        # img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY).astype(np.float64)
-        # u = np.roll(img, 1, axis=0)
-        # l = np.roll(img, 1, axis=1)
-        # r = np.roll(img, -1, axis=1)
-        #
-        # assert np.all(u2 == u)
-        # assert np.all(l2 == l)
-        # assert np.all(r2 == r)
+        u = img[0:-2, 1:-1]
+        l = img[1:-1, 0:-2]
+        r = img[1:-1, 2:]
 
         c_u = np.abs(l - r)
         c_l = c_u + np.abs(u - l)
         c_r = c_u + np.abs(u - r)
 
-        # assert
+        m = np.zeros((h + 1, w + 2))
+        for i in range(1, h + 1):
+            for j in range(1, w + 1):
+                a = m[i - 1, j - 1] + c_l[i - 1, j - 1]
+                b = m[i - 1, j] + c_u[i - 1, j - 1]
+                c = m[i - 1, j + 1] + c_r[i - 1, j - 1]
+                m[i, j] = min(a, b, c)
+            # This one line changes everything.
+            # Ensure the ends are not zero by wrapping the dp matrix around on axis 1.
+            m[i, 0], m[i, -1] = m[i, -2], m[i, 1]
 
-        M = np.zeros((h+1, w+2))
-        # Set top row to energy map top row
-        # M[0, :] = energy_map[0, :]
-
-        for i in range(1, h+1):
-            for j in range(1, w+1):
-                a = M[i - 1, j - 1] + c_l[i - 1, j - 1]
-                b = M[i - 1, j]     + c_u[i - 1, j - 1]
-                c = M[i - 1, j + 1] + c_r[i - 1, j - 1]
-                # M[i, j] = energy_map[i-1, j-1] + min(a, b, c)
-                M[i, j] = min(a, b, c)
-            M[i, 0], M[i, -1] = M[i, -2], M[i, 1]
-
-        return M[1:, 1:-1]
-
-        # energy = np.zeros((h, w))
-        # m = np.zeros((h, w))
-        # for i in range(1, h):
-        #     mU = m[i - 1]
-        #     mL = np.roll(mU, 1)
-        #     mR = np.roll(mU, -1)
-        #
-        #     mULR = np.array([mU, mL, mR])
-        #     cULR = np.array([c_u[i], c_l[i], c_r[i]])
-        #     mULR += cULR
-        #
-        #     argmins = np.argmin(mULR, axis=0)
-        #     m[i] = np.choose(argmins, mULR)
-        #     energy[i] = np.choose(argmins, cULR)
-
-        # return m
-
-    # TODO: Modify or remove this. This is a reference.
-    def _get_lowest_cumulative_energy(self, energy_map):
-        img = cv2.cvtColor(self.working_image, cv2.COLOR_BGR2GRAY).astype(np.float64)
-        h, w = img.shape
-        energy = np.zeros((h, w))
-        m = np.zeros((h, w))
-
-        U = np.roll(img, 1, axis=0)
-        L = np.roll(img, 1, axis=1)
-        R = np.roll(img, -1, axis=1)
-
-        cU = np.abs(R - L)
-        cL = np.abs(U - L) + cU
-        cR = np.abs(U - R) + cU
-
-        for i in range(1, h):
-            mU = m[i - 1]
-            mL = np.roll(mU, 1)
-            mR = np.roll(mU, -1)
-
-            mULR = np.array([mU, mL, mR])
-            cULR = np.array([cU[i], cL[i], cR[i]])
-            mULR += cULR
-
-            argmins = np.argmin(mULR, axis=0)
-            m[i] = np.choose(argmins, mULR)
-            energy[i] = np.choose(argmins, cULR)
-
-        return energy
-
+        return m[1:, 1:-1]
 
 def beach_back_removal(image, seams=300, redSeams=False):
     """ Use the backward method of seam carving from the 2007 paper to remove
@@ -540,9 +478,10 @@ def car_for_insert(image, seams=170, redSeams=False):
     """ Similar to Fig 9 from 2008 paper. Use the forward method of seam carving to
     insert vertical seams in the image. Do NOT hard-code the number of seams to be inserted.
     """
-    # WRITE YOUR CODE HERE.
+    handler = ForwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
+    res = handler.run_insert()
 
-    raise NotImplementedError
+    return res
 
 
 # __________________________________________________________________
