@@ -102,7 +102,7 @@ VISUALIZE = True
 
 
 class BaseSeamCarver:
-    def __init__(self, image, seam_count, red_seams=False, scale=False):
+    def __init__(self, image, seam_count, red_seams=False, scale=False, double_insert=False):
         self.image = self._setup_image(image, scale)
         self.seam_count = seam_count
         self.working_image = self.image.copy()
@@ -111,8 +111,8 @@ class BaseSeamCarver:
         self.pos_map = self._setup_pos_map()
         self.mask = np.zeros_like(self.pos_map, dtype=bool)
         self.red_seams = red_seams
-        self.cum_offset = None
         self.M = None
+        self.double_insert = double_insert
 
     def _setup_image(self, image, scale):
         scale_factor = 0.75
@@ -275,41 +275,36 @@ class BaseSeamCarver:
 
         self.mask = new_mask.copy()
 
-    def update_seams(self, seam_list, curr_seam):
+    def update_seams(self, seam_list, curr_seam, offset=2):
         new_seam_list = []
         for seam in seam_list:
             new_seam = seam.copy()
-            new_seam[np.where(seam > curr_seam)] = new_seam[np.where(seam > curr_seam)] + 2
+            new_seam[np.where(seam > curr_seam)] = new_seam[np.where(seam > curr_seam)] + offset
             new_seam_list.append(new_seam)
         return new_seam_list
 
-    def run_insert(self, double_insert=False):
+    def run_insert(self):
+        self.viz_delay = 100
         # Revers the list because we are using pop in the while loop below.
         seam_list = self._reduce()[::-1]
 
-        self.cum_offset = np.cumsum(self.mask, axis=1) - 1
-        self.mask = np.zeros_like(self.image[:,:,0], dtype=bool)
+        self.mask = np.zeros_like(self.image[:, :, 0], dtype=bool)
 
         self.working_image = self.image.copy()
-
-        if double_insert:
-            tmp_list = []
-            for seam in seam_list:
-                tmp_list.append(seam)
-                tmp_list.append(seam)
-            seam_list = tmp_list
 
         print("#"*80, "Starting insertions")
         count = 0
         while seam_list:
             print("Counter", count)
             seam = seam_list.pop()
-            # seam = self.get_offset_seam(seam)
             self.working_image = self.add_seam(self.working_image, seam)
             self._mask_insert(seam)
-            # if seam_list and not np.all(seam == seam_list[-1]):
-            #     print("*"*80)
             seam_list = self.update_seams(seam_list, seam)
+            if self.double_insert:
+                self.working_image = self.add_seam(self.working_image, seam)
+                self._mask_insert(seam)
+                seam_list = self.update_seams(seam_list, seam, offset=1)
+            self.plot_seam(self.working_image, seam)
             count += 1
 
         if self.red_seams:
@@ -432,8 +427,8 @@ def dolphin_back_double_insert(image, seams=100, redSeams=False):
     i.e. insert seams, then insert seams again.
     Do NOT hard-code the number of seams to be inserted.
     """
-    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=redSeams)
-    res = handler.run_insert(True)
+    handler = BackwardSeamCarver(image, seam_count=seams, red_seams=True, double_insert=True)
+    res = handler.run_insert()
 
     return res
 
