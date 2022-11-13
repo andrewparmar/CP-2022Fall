@@ -7,7 +7,6 @@ import scipy.signal                     # option for a 2D convolution library
 from matplotlib import pyplot as plt    # for optional plots
 
 import copy
-import time
 
 """ Project 2: Seam Carving
 
@@ -98,9 +97,8 @@ def returnYourName():
         your image array is complete on return.
 """
 
-VISUALIZE = True
+VISUALIZE = False
 VERBOSE = False
-
 
 class BaseSeamCarver:
     def __init__(self, image, seam_count, red_seams=False, scale=False, double_insert=False):
@@ -228,24 +226,13 @@ class BaseSeamCarver:
         seam_list = []
 
         for count in range(self.seam_count):
-            loop_start = time.time()
-            if VERBOSE:
-                print(f"Removing seam #{count}")
             img_f64 = self.working_image.astype(np.float64)
-            start = time.time()
             energy_map = self.get_energy_map(img_f64)
-            if VERBOSE:
-                print("energy_map", time.time() - start)
 
-            start = time.time()
             self.M = self.get_lowest_cumulative_energy(energy_map)
-            if VERBOSE:
-                print("cumulative map", time.time() - start)
 
-            start = time.time()
             seam_cells = self.get_lowest_energy_seam(self.M)
-            if VERBOSE:
-                print("get seam", time.time() - start)
+
             seam_list.append(seam_cells)
 
             self.plot_seam(self.working_image, seam_cells)
@@ -253,9 +240,6 @@ class BaseSeamCarver:
             self.working_image = self.remove_seam(self.working_image, seam_cells)
             self.mark_mask(seam_cells)
             self.remove_seam_from_map(seam_cells)
-
-            if VERBOSE:
-                print("Loop time", time.time() - loop_start)
 
         return seam_list
 
@@ -554,7 +538,7 @@ def numerical_comparison(result_image, comparison_image):
 
     NOTE: you may return only one or two values; choose the best one(s) you tried.
     """
-    error = result_image.astype(np.float32) - comparison_image.astype(np.float32)
+    error = result_image.astype(np.float64) - comparison_image.astype(np.float64)
     mse = np.square(error).mean()
     rmse = np.sqrt(mse)
 
