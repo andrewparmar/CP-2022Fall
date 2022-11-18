@@ -303,30 +303,6 @@ class BaseSeamCarver:
 
         return self.working_image
 
-    # @staticmethod
-    # def get_energy_map(image):
-    #     b, g, r = cv2.split(image)
-    #     b_ch_energy = np.absolute(cv2.Sobel(b, -1, 1, 0)) + np.absolute(cv2.Sobel(b, -1, 0, 1))
-    #     g_ch_energy = np.absolute(cv2.Sobel(g, -1, 1, 0)) + np.absolute(cv2.Sobel(g, -1, 0, 1))
-    #     r_ch_energy = np.absolute(cv2.Sobel(r, -1, 1, 0)) + np.absolute(cv2.Sobel(r, -1, 0, 1))
-    #     return b_ch_energy + g_ch_energy + r_ch_energy
-
-    # @staticmethod
-    # def get_energy_map(image):
-    #     b_ch, g_ch, r_ch = cv2.split(image)
-    #     b_ch_energy = np.absolute(cv2.Scharr(b_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(b_ch, -1, 0, 1))
-    #     g_ch_energy = np.absolute(cv2.Scharr(g_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(g_ch, -1, 0, 1))
-    #     r_ch_energy = np.absolute(cv2.Scharr(r_ch, -1, 1, 0)) + np.absolute(cv2.Scharr(r_ch, -1, 0, 1))
-    #     return b_ch_energy + g_ch_energy + r_ch_energy
-
-    # @staticmethod
-    # def get_energy_map(image):
-    #     b_ch, g_ch, r_ch = cv2.split(image)
-    #     b_ch_energy = np.absolute(np.gradient(b_ch, axis=0)) + np.absolute(np.gradient(b_ch, axis=1))
-    #     g_ch_energy = np.absolute(np.gradient(g_ch, axis=0)) + np.absolute(np.gradient(g_ch, axis=1))
-    #     r_ch_energy = np.absolute(np.gradient(r_ch, axis=0)) + np.absolute(np.gradient(r_ch, axis=1))
-    #     return b_ch_energy + g_ch_energy + r_ch_energy
-
     @staticmethod
     def get_energy_map(image):
         image = cv2.copyMakeBorder(image, 1, 1, 1, 1, borderType=cv2.BORDER_WRAP)

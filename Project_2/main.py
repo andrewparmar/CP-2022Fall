@@ -106,29 +106,35 @@ def generate_result_images(beach, dolphin, bench, car):
     return
 
 def generate_differences():
-    results = ["res_beach_back_rem.png",
-               "res_dolphin_back_ins.png",
-               "res_dolphin_back_double.png",
-               "res_bench_back_rem.png",
-               "res_bench_for_rem.png",
-               "res_car_back_ins.png",
-               "res_car_for_ins.png"]
+    results = [
+        "res_beach_back_rem.png",
+        "res_dolphin_back_ins.png",
+        "res_dolphin_back_double.png",
+        "res_bench_back_rem.png",
+        "res_bench_for_rem.png",
+        "res_car_back_ins.png",
+        "res_car_for_ins.png"
+    ]
 
-    comps  =  ["comp_beach_back_rem.png",
-               "comp_dolphin_back_ins.png",
-               "comp_dolphin_back_double.png",
-               "comp_bench_back_rem.png",
-               "comp_bench_for_rem.png",
-               "comp_car_back_ins.png",
-               "comp_car_for_ins.png"]
+    comps = [
+        "comp_beach_back_rem.png",
+        "comp_dolphin_back_ins.png",
+        "comp_dolphin_back_double.png",
+        "comp_bench_back_rem.png",
+        "comp_bench_for_rem.png",
+        "comp_car_back_ins.png",
+        "comp_car_for_ins.png"
+    ]
 
-    diffs  =  ["diff_beach_back_rem.png",
-               "diff_dolphin_back_ins.png",
-               "diff_dolphin_back_double.png",
-               "diff_bench_back_rem.png",
-               "diff_bench_for_rem.png",
-               "diff_car_back_ins.png",
-               "diff_car_for_ins.png"]
+    diffs = [
+        "diff_beach_back_rem.png",
+        "diff_dolphin_back_ins.png",
+        "diff_dolphin_back_double.png",
+        "diff_bench_back_rem.png",
+        "diff_bench_for_rem.png",
+        "diff_car_back_ins.png",
+        "diff_car_for_ins.png"
+    ]
 
 
     for i in range(len(results)):
