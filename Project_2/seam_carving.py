@@ -190,11 +190,11 @@ class BaseSeamCarver:
             if l >= 0:
                 l_val = image[i, l, :]
             else:
-                l_val = 0
+                l_val = image[i, 0, :]
             if r < image.shape[1]:
                 r_val = image[i, r, :]
             else:
-                r_val = 0
+                r_val = image[i, -1, :]
             avg_vals = np.mean([l_val, r_val], axis=0)
 
             new_img[i, j, :] = avg_vals
@@ -332,9 +332,8 @@ class BaseSeamCarver:
         image = cv2.copyMakeBorder(image, 1, 1, 1, 1, borderType=cv2.BORDER_WRAP)
         kernel_x = np.array([[0, 0, 0], [1, 0, -1], [0, 0, 0]], dtype=np.float64)
         kernel_y = np.array([[0, 1, 0], [0, 0, 0], [0, -1, 0]], dtype=np.float64)
-
-        img_x_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_x, borderType=cv2.BORDER_REFLECT_101)
-        img_y_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_y, borderType=cv2.BORDER_REFLECT_101)
+        img_x_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_x)
+        img_y_grad = cv2.filter2D(src=image, ddepth=-1, kernel=kernel_y)
         img_x_grad = img_x_grad[1:-1, 1:-1, :]
         img_y_grad = img_y_grad[1:-1, 1:-1, :]
 
@@ -496,12 +495,16 @@ def difference_image(result_image, comparison_image):
         2) Before converting back to uint8, complete any necessary scaling,
            rounding, or clipping.
     """
-    # result_gray = cv2.cvtColor(result_image, cv2.COLOR_BGR2GRAY)
-    # comparison_gray = cv2.cvtColor(comparison_image, cv2.COLOR_BGR2GRAY)
-    # foo = np.abs(result_gray.astype(np.float64) - comparison_gray.astype(np.float64))
+    result_gray = cv2.cvtColor(result_image, cv2.COLOR_BGR2GRAY)
+    comparison_gray = cv2.cvtColor(comparison_image, cv2.COLOR_BGR2GRAY)
 
-    foo = np.abs(result_image.astype(np.float64) - comparison_image.astype(np.float64))
-    return foo.astype(np.uint8)
+    diff = result_gray.astype(np.float64) - comparison_gray.astype(np.float64)
+    h, w = diff.shape
+    result = np.zeros((h, w, 3))
+    result[:, :, 1][diff > 0] = diff[diff > 0]
+    result[:, :, 2][diff < 0] = np.abs(diff[diff < 0])
+
+    return result.astype(np.uint8)
 
 
 
@@ -539,10 +542,9 @@ def numerical_comparison(result_image, comparison_image):
     NOTE: you may return only one or two values; choose the best one(s) you tried.
     """
     error = result_image.astype(np.float64) - comparison_image.astype(np.float64)
-    mse = np.square(error).mean()
-    rmse = np.sqrt(mse)
+    rmse = np.sqrt(np.square(error).mean())
 
-    return mse, rmse
+    return rmse
 
 
 if __name__ == "__main__":
